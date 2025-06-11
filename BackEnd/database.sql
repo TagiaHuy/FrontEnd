@@ -1,8 +1,7 @@
--- Tạo database
-CREATE DATABASE IF NOT EXISTS plantcraft;
-USE plantcraft;
 
--- Bảng users
+create database PlanCraft
+use PlanCraft
+
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) COMMENT 'Tên người dùng',
@@ -13,20 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo tài khoản'
 );
 
--- Bảng plants
-CREATE TABLE IF NOT EXISTS plants (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL COMMENT 'Tên cây',
-    species VARCHAR(100) COMMENT 'Loài cây',
-    care_instructions TEXT COMMENT 'Hướng dẫn chăm sóc',
-    water_frequency VARCHAR(50) COMMENT 'Tần suất tưới nước',
-    user_id INT COMMENT 'ID người dùng sở hữu',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
 
--- Table for pending user registrations
 CREATE TABLE pending_registrations (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
@@ -37,12 +23,58 @@ CREATE TABLE pending_registrations (
     expires_at TIMESTAMP NOT NULL
 );
 
--- Chỉ mục
-CREATE INDEX idx_user_email ON users(email);
-CREATE INDEX idx_plant_user ON plants(user_id);
+CREATE TABLE active_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  token TEXT NOT NULL,
+  login_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  logout_time DATETIME DEFAULT NULL
+);
 
--- Dữ liệu mẫu cho plants
-INSERT INTO plants (name, species, care_instructions, water_frequency) VALUES
-('Cây Trầu Bà', 'Epipremnum aureum', 'Đặt nơi có ánh sáng gián tiếp, tưới nước khi đất khô', 'Mỗi 5-7 ngày'),
-('Cây Lưỡi Hổ', 'Sansevieria trifasciata', 'Chịu được bóng râm, tưới nước ít', 'Mỗi 2-3 tuần'),
-('Cây Phát Tài', 'Dracaena sanderiana', 'Ánh sáng vừa phải, giữ đất ẩm', 'Mỗi 3-4 ngày');
+
+ALTER TABLE pending_registrations ADD INDEX idx_verification_token (verification_token);
+
+CREATE TABLE goals (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+  status ENUM('in_progress', 'completed', 'cancelled') DEFAULT 'in_progress',
+  progress INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE goal_phases (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  goal_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  order_number INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE tasks (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  goal_id INT,
+  phase_id INT,
+  user_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  deadline DATETIME NOT NULL,
+  priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+  status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
+  completed_at DATETIME,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+

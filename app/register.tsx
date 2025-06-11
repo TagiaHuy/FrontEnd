@@ -6,33 +6,39 @@ import { useThemeColor } from '../hooks/useThemeColor';
 import { router } from 'expo-router';
 import axios from 'axios';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const primaryColor = useThemeColor({}, 'tint');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
     }
 
+    if (password !== confirmPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu xác nhận không khớp');
+      return;
+    }
+
     try {
-      const response = await axios.post('http://172.17.155.223:3000/api/auth/login', {
+      const response = await axios.post('http://172.17.155.223:3000/api/auth/register', {
+        name,
         email,
         password
       });
 
-      if (response.data.token) {
-        // Lưu token vào AsyncStorage hoặc state management
-        // TODO: Implement token storage
-        router.replace('/');
+      if (response.data) {
+        Alert.alert('Thành công', 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.');
+        router.replace('/login');
       }
     } catch (error: any) {
-      console.log(error);
-      Alert.alert('Lỗi', error.response?.data?.message || 'Đã có lỗi xảy ra khi đăng nhập');
+      Alert.alert('Lỗi', error.response?.data?.message || 'Đã có lỗi xảy ra khi đăng ký');
     }
   };
 
@@ -42,8 +48,16 @@ export default function LoginScreen() {
       style={[styles.container, { backgroundColor }]}
     >
       <ThemedView style={styles.formContainer}>
-        <ThemedText style={styles.title}>Đăng Nhập</ThemedText>
+        <ThemedText style={styles.title}>Đăng Ký</ThemedText>
         
+        <TextInput
+          style={[styles.input, { color: textColor, borderColor: primaryColor }]}
+          placeholder="Họ và tên"
+          placeholderTextColor={textColor}
+          value={name}
+          onChangeText={setName}
+        />
+
         <TextInput
           style={[styles.input, { color: textColor, borderColor: primaryColor }]}
           placeholder="Email"
@@ -63,19 +77,28 @@ export default function LoginScreen() {
           secureTextEntry
         />
 
+        <TextInput
+          style={[styles.input, { color: textColor, borderColor: primaryColor }]}
+          placeholder="Xác nhận mật khẩu"
+          placeholderTextColor={textColor}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: primaryColor }]}
-          onPress={handleLogin}
+          onPress={handleRegister}
         >
-          <ThemedText style={styles.buttonText}>Đăng Nhập</ThemedText>
+          <ThemedText style={styles.buttonText}>Đăng Ký</ThemedText>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.registerLink}
-          onPress={() => router.replace('/register')}
+          style={styles.loginLink}
+          onPress={() => router.replace('/login')}
         >
-          <ThemedText style={styles.registerLinkText}>
-            Chưa có tài khoản? Đăng ký
+          <ThemedText style={styles.loginLinkText}>
+            Đã có tài khoản? Đăng nhập
           </ThemedText>
         </TouchableOpacity>
       </ThemedView>
@@ -118,11 +141,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  registerLink: {
+  loginLink: {
     marginTop: 20,
     alignItems: 'center',
   },
-  registerLinkText: {
+  loginLinkText: {
     fontSize: 16,
     textDecorationLine: 'underline',
   },
