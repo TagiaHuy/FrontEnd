@@ -1,5 +1,8 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-.gitignore
+BackEnd/.gitignore
+BackEnd/.git
+BackEnd/.node_modules
+BackEnd/.env
 
 # dependencies
 node_modules/
