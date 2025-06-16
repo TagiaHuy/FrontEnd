@@ -10,4 +10,4 @@ pipeline {
 	} // end clone
 
   } // end stages
-}//end pipelineàgasf
+}//end pipelineàgasf	

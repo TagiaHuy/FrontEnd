@@ -22,12 +22,16 @@ const UserModel = {
         passwordHash = await bcrypt.hash(userData.password, saltRounds);  // Mã hóa mật khẩu nếu chưa được mã hóa
       }
 
-      const query = 'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)';
-      const params = [userData.name, userData.email, passwordHash];
+      const query = 'INSERT INTO users (name, email, password_hash, is_email_verified) VALUES (?, ?, ?, ?)';
+      const params = [
+        userData.name,
+        userData.email,
+        passwordHash,
+        userData.is_email_verified ? 1 : 0  // Chuyển đổi is_email_verified sang 1 hoặc 0
+      ];
       const result = await db.query(query, params);
 
-      console.log('[addSession] Thành công:', result);
-    return result;  // Trả về kết quả với insertId
+      return result;  // Trả về kết quả với insertId
     } catch (error) {
       console.error('Error creating user:', error);
       throw new Error('Không thể tạo người dùng');
@@ -39,9 +43,13 @@ const UserModel = {
    */
   findByEmail: async (email) => {
     try {
-      const query = 'SELECT * FROM users WHERE email = ?';
+      const query = `
+        SELECT id, name, email, password_hash, avatar_url, is_email_verified
+        FROM users
+        WHERE email = ?
+      `;
       const results = await db.query(query, [email]);
-      return results.length > 0 ? results[0] : null;  // Trả về null nếu không tìm thấy người dùng
+      return results.length > 0 ? results[0] : null;
     } catch (error) {
       console.error('Error finding user by email:', error);
       throw new Error('Không thể tìm thấy người dùng');
@@ -74,14 +82,12 @@ const UserModel = {
    */
   updatePassword: async (userId, newPassword) => {
     try {
-      const saltRounds = 10; // Đặt số vòng mã hóa cho bcrypt
-      const passwordHash = await bcrypt.hash(newPassword, saltRounds);  // Mã hóa mật khẩu mới
+      const passwordHash = await bcrypt.hash(newPassword, 10);  // Mã hóa mật khẩu mới
 
       const query = 'UPDATE users SET password_hash = ? WHERE id = ?';
       const result = await db.query(query, [passwordHash, userId]); // Cập nhật mật khẩu đã mã hóa vào cơ sở dữ liệu
 
-      console.log('[addSession] Thành công:', result);
-    return result;
+      return result;
     } catch (error) {
       console.error('Error updating password:', error);
       throw new Error('Không thể cập nhật mật khẩu');
@@ -93,7 +99,7 @@ const UserModel = {
    */
   getUserById: async (userId) => {
     try {
-      const query = 'SELECT id, name, email, avatar_url, is_email_verified, created_at FROM users WHERE id = ?';
+      const query = 'SELECT id, name, email, avatar_url, is_email_verified, password_hash, created_at FROM users WHERE id = ?';
       const results = await db.query(query, [userId]);
       return results[0];  // Trả về người dùng đầu tiên tìm thấy
     } catch (error) {
@@ -115,8 +121,7 @@ const UserModel = {
       }
 
       const result = await db.query(query, [userId]);
-      console.log('[addSession] Thành công:', result);
-    return result;  // Trả về kết quả cập nhật
+      return result;  // Trả về kết quả cập nhật
     } catch (error) {
       console.error('Error verifying email:', error);
       throw new Error('Không thể xác thực email');
@@ -128,11 +133,9 @@ const UserModel = {
    */
   logoutSession: async (token) => {
     try {
-      console.log('[logoutSession] Xóa session với token:', token);
-      const query = 'UPDATE active_sessions SET logout_time = NOW() WHERE token = ? AND logout_time IS NULL';
-      const result = await db.query(query, [token]);
-      console.log('[logoutSession] Kết quả:', result);
-      return result;
+      const query = 'DELETE FROM active_sessions WHERE user_id = ?';
+      const result = await db.query(query, [userId]);  // Giả sử userId được lấy từ token hoặc context
+      return result;  // Trả về kết quả truy vấn xóa
     } catch (error) {
       console.error('Error logging out session:', error);
       throw new Error('Không thể đăng xuất.');
@@ -182,8 +185,7 @@ const UserModel = {
         registrationData.expiresAt
       ];
       const result = await db.query(query, params);
-      console.log('[addSession] Thành công:', result);
-    return result;
+      return result;
     } catch (error) {
       console.error('Error creating pending registration:', error);
       throw new Error('Không thể tạo đăng ký chờ');
@@ -197,8 +199,7 @@ const UserModel = {
     try {
       const query = 'DELETE FROM pending_registrations WHERE email = ?';
       const result = await db.query(query, [email]);
-      console.log('[addSession] Thành công:', result);
-    return result;
+      return result;
     } catch (error) {
       console.error('Error deleting pending registration:', error);
       throw new Error('Không thể xóa đăng ký chờ');
@@ -210,11 +211,9 @@ const UserModel = {
    */
   addSession: async (userId, token) => {
     try {
-      console.log('[addSession] Ghi session:', userId, token);
-    const query = 'INSERT INTO active_sessions (user_id, token, login_time) VALUES (?, ?, NOW())';
+      const query = 'INSERT INTO active_sessions (user_id, token, login_time) VALUES (?, ?, NOW())';
       const result = await db.query(query, [userId, token]);
-      console.log('[addSession] Thành công:', result);
-    return result;
+      return result;
     } catch (error) {
       console.error('Error adding session:', error);
       throw new Error('Không thể tạo session');
@@ -230,7 +229,6 @@ const UserModel = {
         SELECT s.id, u.id AS user_id, u.name, u.email, s.login_time
         FROM active_sessions s
         JOIN users u ON s.user_id = u.id
-        WHERE s.logout_time IS NULL
         ORDER BY s.login_time DESC
       `;
       const results = await db.query(query);
@@ -238,6 +236,25 @@ const UserModel = {
     } catch (error) {
       console.error('Error listing active sessions:', error);
       throw new Error('Không thể lấy danh sách phiên đăng nhập');
+    }
+  },
+
+  /**
+ * Lưu lại lịch sử thay đổi thông tin người dùng
+ */
+  saveUpdateHistory: async (userId, updateType, oldValue, newValue) => {
+    try {
+      console.log('Saving update history:', { userId, updateType, oldValue, newValue });  // Log tham số
+
+      const query = 'INSERT INTO user_update_history (user_id, update_type, old_value, new_value) VALUES (?, ?, ?, ?)';
+      const params = [userId, updateType, oldValue, newValue];
+      
+      const result = await db.query(query, params);
+      console.log('History saved:', result);  // Log kết quả trả về
+      return result;
+    } catch (error) {
+      console.error('Error saving update history:', error);
+      throw new Error('Không thể lưu lịch sử thay đổi');
     }
   }
 };

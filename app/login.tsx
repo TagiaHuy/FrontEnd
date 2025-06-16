@@ -3,7 +3,8 @@ import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, TouchableOpacity
 import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { useThemeColor } from '../hooks/useThemeColor';
-import { router } from 'expo-router';
+import { router } from 'expo-router'; 
+import {API_URL} from '@env';
 import axios from 'axios';
 
 export default function LoginScreen() {
@@ -20,7 +21,7 @@ export default function LoginScreen() {
     }
 
     try {
-      const response = await axios.post('http://172.17.155.223:3000/api/auth/login', {
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
         email,
         password
       });
