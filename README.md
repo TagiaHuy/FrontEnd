@@ -23,33 +23,6 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-## Project Structure
-
-```
-FrontEnd/
-├── app/                  # Main application directory containing all screens and routes
-├── assets/              # Static assets like images, fonts, etc.
-├── components/          # Reusable React components
-├── constants/           # Application constants and configuration
-├── hooks/               # Custom React hooks
-├── .expo/               # Expo configuration and cache
-├── node_modules/        # Project dependencies
-├── .vscode/            # VS Code specific settings
-├── scripts/            # Build and utility scripts
-├── app.json            # Expo configuration file
-├── package.json        # Project dependencies and scripts
-├── tsconfig.json       # TypeScript configuration
-└── eslint.config.js    # ESLint configuration
-```
-
-### Key Directories Explained
-
-- **app/**: Contains all the screens and routes of your application using Expo Router's file-based routing system
-- **components/**: Houses reusable UI components that can be shared across different screens
-- **constants/**: Stores application-wide constants, theme configurations, and other static data
-- **hooks/**: Contains custom React hooks for shared logic and state management
-- **assets/**: Stores all static files like images, fonts, and other media files
-
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ## Get a fresh project

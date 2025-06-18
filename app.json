@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "FrontEnd",
-    "slug": "FrontEnd",
+    "name": "client",
+    "slug": "client",
+    "entryPoint": "index.tsx",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "client",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -16,8 +17,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.FrontEnd"
+      "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",

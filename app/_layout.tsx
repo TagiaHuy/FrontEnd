@@ -17,21 +17,9 @@ export default function RootLayout() {
     return null;
   }
 
-  const handleLogin = async () => {
-    try {
-      // Gọi API đăng nhập
-      // Xử lý response
-      // Lưu token
-      // Chuyển hướng đến màn hình chính
-    } catch (error) {
-      // Xử lý lỗi
-    }
-  };
-
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
