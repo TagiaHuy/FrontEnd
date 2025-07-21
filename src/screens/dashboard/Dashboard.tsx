@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,20 +6,33 @@ import {
   TouchableOpacity, 
   ScrollView,
   Alert,
-  ActivityIndicator,
   Dimensions
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
+import { 
+  StatsCard, 
+  QuickActions, 
+  TaskList,
+  StatsData,
+  QuickAction,
+  Task
+} from '../../components/features/dashboard';
+import { Button, Card, Loading } from '../../components/ui';
+import { useApi, useMultipleLoading } from '../../hooks';
+import { colors, textStyles, spacing, commonStyles } from '../../styles';
 
 const { width } = Dimensions.get('window');
 
 const Dashboard = ({ navigation }) => {
   const { user, logout } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [goals, setGoals] = useState([]);
-  const [todayTasks, setTodayTasks] = useState([]);
-  const [stats, setStats] = useState({
+  const { isLoading: isLoadingGoals, execute: executeGoals } = useApi();
+  const { isLoading: isLoadingTasks, execute: executeTasks } = useApi();
+  const { isLoading: isLoadingStats, execute: executeStats } = useApi();
+
+  const [goals, setGoals] = React.useState([]);
+  const [todayTasks, setTodayTasks] = React.useState<Task[]>([]);
+  const [stats, setStats] = React.useState({
     totalGoals: 0,
     completedGoals: 0,
     totalTasks: 0,
@@ -32,27 +45,36 @@ const Dashboard = ({ navigation }) => {
 
   const loadDashboardData = async () => {
     try {
-      setIsLoading(true);
-      
       // Load goals
-      const goalsData = await apiService.get('/goals');
-      setGoals(goalsData.slice(0, 3)); // Show only 3 recent goals
-      
+      const goalsResult = await executeGoals(async () => {
+        const goalsData = await apiService.get('/goals');
+        setGoals(goalsData.slice(0, 3)); // Show only 3 recent goals
+        return goalsData;
+      });
+
       // Load today's tasks
-      const tasksData = await apiService.get('/tasks/today');
-      setTodayTasks(tasksData);
-      
+      const tasksResult = await executeTasks(async () => {
+        const tasksData = await apiService.get('/tasks/today');
+        setTodayTasks(tasksData);
+        return tasksData;
+      });
+
       // Load statistics
-      const statsData = await apiService.get('/goals/stats');
-      setStats(statsData);
-      
-      console.log('Dashboard data loaded:', { goals: goalsData, tasks: tasksData, stats: statsData });
+      const statsResult = await executeStats(async () => {
+        const statsData = await apiService.get('/goals/stats');
+        setStats(statsData);
+        return statsData;
+      });
+
+      if (!goalsResult.success || !tasksResult.success || !statsResult.success) {
+        // Use mock data for development
+        setMockData();
+      }
+
+      console.log('Dashboard data loaded:', { goals, tasks: todayTasks, stats });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      // Use mock data for development
       setMockData();
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -92,33 +114,43 @@ const Dashboard = ({ navigation }) => {
   const handleGoals = () => navigation.navigate('GoalsList');
   const handleAddTask = () => Alert.alert('Add Task', 'Add task functionality will be implemented.');
 
-  const getProgressColor = (progress) => {
-    if (progress >= 80) return '#28a745';
-    if (progress >= 60) return '#17a2b8';
-    if (progress >= 40) return '#ffc107';
-    return '#dc3545';
+  const quickActions: QuickAction[] = [
+    { id: 'add-task', title: 'Add Task', icon: '📝', onPress: handleAddTask },
+    { id: 'profile', title: 'Profile', icon: '👤', onPress: handleProfile },
+    { id: 'settings', title: 'Settings', icon: '⚙️', onPress: handleSettings },
+    { id: 'analytics', title: 'Analytics', icon: '📊', onPress: handleAnalytics },
+    { id: 'goals', title: 'Goals', icon: '🎯', onPress: handleGoals },
+  ];
+
+  const statsData: StatsData[] = [
+    {
+      completed: stats.completedGoals,
+      total: stats.totalGoals,
+      label: 'Goals',
+    },
+    {
+      completed: stats.completedTasks,
+      total: stats.totalTasks,
+      label: 'Tasks',
+    },
+  ];
+
+  const handleTaskToggle = (taskId: number, completed: boolean) => {
+    setTodayTasks(prev => 
+      prev.map(task => 
+        task.id === taskId ? { ...task, completed } : task
+      )
+    );
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high': return '#dc3545';
-      case 'medium': return '#ffc107';
-      case 'low': return '#28a745';
-      default: return '#6c757d';
-    }
-  };
+  const isLoading = isLoadingGoals || isLoadingTasks || isLoadingStats;
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
-      </View>
-    );
+    return <Loading text="Loading dashboard..." fullScreen />;
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={commonStyles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>Welcome back, {user?.name}!</Text>
@@ -129,98 +161,30 @@ const Dashboard = ({ navigation }) => {
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Progress Overview</Text>
         <View style={styles.progressCards}>
-          <View style={styles.progressCard}>
-            <Text style={styles.progressNumber}>{stats.completedGoals}/{stats.totalGoals}</Text>
-            <Text style={styles.progressLabel}>Goals</Text>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${(stats.completedGoals / stats.totalGoals) * 100}%`,
-                    backgroundColor: getProgressColor((stats.completedGoals / stats.totalGoals) * 100)
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-          
-          <View style={styles.progressCard}>
-            <Text style={styles.progressNumber}>{stats.completedTasks}/{stats.totalTasks}</Text>
-            <Text style={styles.progressLabel}>Tasks</Text>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${(stats.completedTasks / stats.totalTasks) * 100}%`,
-                    backgroundColor: getProgressColor((stats.completedTasks / stats.totalTasks) * 100)
-                  }
-                ]} 
-              />
-            </View>
-          </View>
+          {statsData.map((stat, index) => (
+            <StatsCard key={index} stats={stat} />
+          ))}
         </View>
       </View>
 
       {/* Quick Actions */}
       <View style={styles.quickActionsSection}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleAddTask}>
-            <Text style={styles.actionIcon}>📝</Text>
-            <Text style={styles.actionText}>Add Task</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleProfile}>
-            <Text style={styles.actionIcon}>👤</Text>
-            <Text style={styles.actionText}>Profile</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleSettings}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionText}>Settings</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleAnalytics}>
-            <Text style={styles.actionIcon}>📊</Text>
-            <Text style={styles.actionText}>Analytics</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleGoals}>
-            <Text style={styles.actionIcon}>🎯</Text>
-            <Text style={styles.actionText}>Goals</Text>
-          </TouchableOpacity>
-        </View>
+        <QuickActions actions={quickActions} />
       </View>
 
       {/* Today's Tasks */}
       <View style={styles.tasksSection}>
-        <Text style={styles.sectionTitle}>Today's Tasks</Text>
-        {todayTasks.length > 0 ? (
-          todayTasks.map((task) => (
-            <View key={task.id} style={styles.taskItem}>
-              <View style={styles.taskContent}>
-                <View style={[styles.priorityDot, { backgroundColor: getPriorityColor(task.priority) }]} />
-                <Text style={[styles.taskTitle, task.completed && styles.completedTask]}>
-                  {task.title}
-                </Text>
-              </View>
-              <TouchableOpacity style={[styles.taskCheckbox, task.completed && styles.checkedTask]}>
-                {task.completed && <Text style={styles.checkmark}>✓</Text>}
-              </TouchableOpacity>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>No tasks for today</Text>
-        )}
+        <TaskList 
+          tasks={todayTasks}
+          onTaskToggle={handleTaskToggle}
+        />
       </View>
 
       {/* Recent Goals */}
       <View style={styles.goalsSection}>
         <Text style={styles.sectionTitle}>Recent Goals</Text>
         {goals.map((goal) => (
-          <View key={goal.id} style={styles.goalItem}>
+          <Card key={goal.id} variant="elevated" padding="small" style={styles.goalCard}>
             <View style={styles.goalHeader}>
               <Text style={styles.goalTitle}>{goal.title}</Text>
               <Text style={styles.goalDeadline}>{goal.deadline}</Text>
@@ -232,242 +196,108 @@ const Dashboard = ({ navigation }) => {
                     styles.goalProgressFill, 
                     { 
                       width: `${goal.progress}%`,
-                      backgroundColor: getProgressColor(goal.progress)
+                      backgroundColor: goal.progress >= 80 ? colors.success.main : 
+                                     goal.progress >= 60 ? colors.primary.main : colors.warning.main
                     }
                   ]} 
                 />
               </View>
               <Text style={styles.goalProgressText}>{goal.progress}%</Text>
             </View>
-          </View>
+          </Card>
         ))}
       </View>
 
       {/* Statistics Chart Placeholder */}
       <View style={styles.statsSection}>
         <Text style={styles.sectionTitle}>Statistics</Text>
-        <View style={styles.chartPlaceholder}>
+        <Card variant="elevated" padding="large" style={styles.chartPlaceholder}>
           <Text style={styles.chartText}>📊</Text>
           <Text style={styles.chartLabel}>Weekly Progress Chart</Text>
           <Text style={styles.chartNote}>Chart visualization will be implemented</Text>
-        </View>
+        </Card>
       </View>
 
       {/* Navigation Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
+        <Button
+          title="Logout"
+          variant="danger"
+          onPress={handleLogout}
+          fullWidth
+        />
       </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
   header: {
-    backgroundColor: '#007AFF',
-    padding: 20,
+    backgroundColor: colors.primary.main,
+    padding: spacing.lg,
     paddingTop: 40,
   },
   welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
+    ...textStyles.h2,
+    color: colors.primary.contrast,
+    marginBottom: spacing.xs,
   },
   dateText: {
-    fontSize: 16,
-    color: '#e3f2fd',
+    ...textStyles.body2,
+    color: colors.primary.light,
   },
   progressSection: {
-    padding: 20,
+    padding: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
+    ...textStyles.h4,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
   },
   progressCards: {
     flexDirection: 'row',
-    gap: 15,
-  },
-  progressCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  progressNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
+    gap: spacing.md,
   },
   quickActionsSection: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 15,
-  },
-  actionButton: {
-    width: (width - 70) / 2,
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 0,
   },
   tasksSection: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  taskContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 10,
-  },
-  taskTitle: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-  },
-  completedTask: {
-    textDecorationLine: 'line-through',
-    color: '#999',
-  },
-  taskCheckbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkedTask: {
-    backgroundColor: '#007AFF',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    fontStyle: 'italic',
-    padding: 20,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 0,
   },
   goalsSection: {
-    padding: 20,
+    padding: spacing.lg,
     paddingTop: 0,
   },
-  goalItem: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+  goalCard: {
+    marginBottom: spacing.sm,
   },
   goalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   goalTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    ...textStyles.body2,
+    color: colors.text.primary,
     flex: 1,
+    fontWeight: '500',
   },
   goalDeadline: {
-    fontSize: 12,
-    color: '#666',
+    ...textStyles.caption,
+    color: colors.text.secondary,
   },
   goalProgress: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: spacing.sm,
   },
   goalProgressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: '#e9ecef',
+    backgroundColor: colors.neutral.gray200,
     borderRadius: 3,
   },
   goalProgressFill: {
@@ -475,55 +305,35 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   goalProgressText: {
-    fontSize: 12,
+    ...textStyles.caption,
+    color: colors.text.primary,
     fontWeight: '500',
-    color: '#333',
     minWidth: 30,
   },
   statsSection: {
-    padding: 20,
+    padding: spacing.lg,
     paddingTop: 0,
   },
   chartPlaceholder: {
-    backgroundColor: '#fff',
-    padding: 40,
-    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   chartText: {
     fontSize: 48,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   chartLabel: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 5,
+    ...textStyles.h5,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
   },
   chartNote: {
-    fontSize: 14,
-    color: '#666',
+    ...textStyles.body3,
+    color: colors.text.secondary,
     textAlign: 'center',
   },
   footer: {
-    padding: 20,
+    padding: spacing.lg,
     paddingTop: 0,
-  },
-  logoutButton: {
-    backgroundColor: '#dc3545',
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

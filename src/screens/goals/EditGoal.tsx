@@ -1,41 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform
-} from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Alert, TextInput } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
+import { Button, Loading } from '../../components/ui';
+import { colors, spacing, textStyles, priorityColors, commonStyles } from '../../styles';
+import { useLoading } from '../../hooks/useLoading';
 
 const priorities = [
-  { value: 'Low', label: 'Low', color: '#28a745', icon: '🟢' },
-  { value: 'Medium', label: 'Medium', color: '#ffc107', icon: '🟡' },
-  { value: 'High', label: 'High', color: '#dc3545', icon: '🔴' },
+  { value: 'Low', label: 'Low', color: priorityColors.low, icon: '🟢' },
+  { value: 'Medium', label: 'Medium', color: priorityColors.medium, icon: '🟡' },
+  { value: 'High', label: 'High', color: priorityColors.high, icon: '🔴' },
 ];
+
+type Errors = {
+  goalName?: string;
+  description?: string;
+  deadline?: string;
+};
 
 const EditGoal = ({ navigation, route }) => {
   const { goalId } = route.params;
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, withLoading } = useLoading(true);
   const [isSaving, setIsSaving] = useState(false);
   const [goal, setGoal] = useState(null);
   const [goalName, setGoalName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState('Medium');
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Errors>({});
   const [isFormValid, setIsFormValid] = useState(false);
   const [changeHistory, setChangeHistory] = useState([]);
 
   useEffect(() => {
-    loadGoal();
+    withLoading(loadGoal);
   }, [goalId]);
 
   useEffect(() => {
@@ -44,7 +42,6 @@ const EditGoal = ({ navigation, route }) => {
 
   const loadGoal = async () => {
     try {
-      setIsLoading(true);
       const response = await apiService.get(`/goals/${goalId}`);
       const goalData = response.goal || response;
       setGoal(goalData);
@@ -54,17 +51,14 @@ const EditGoal = ({ navigation, route }) => {
       setPriority(goalData.priority ? capitalize(goalData.priority) : 'Medium');
       // TODO: Load change history if available
     } catch (error) {
-      console.error('Error loading goal:', error);
       Alert.alert('Error', 'Failed to load goal.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Errors = {};
     if (!goalName.trim()) {
       newErrors.goalName = 'Goal name is required';
     } else if (goalName.trim().length < 3) {
@@ -102,22 +96,18 @@ const EditGoal = ({ navigation, route }) => {
         deadline: deadline,
         priority: priority,
       };
-      const response = await apiService.put(`/goals/${goalId}`, updateData);
+      await apiService.put(`/goals/${goalId}`, updateData);
       Alert.alert('Success', 'Goal updated successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
-      console.error('Error updating goal:', error);
       Alert.alert('Error', 'Failed to update goal. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    navigation.goBack();
-  };
-
+  const handleCancel = () => navigation.goBack();
   const handleDelete = () => {
     Alert.alert(
       'Delete Goal',
@@ -128,292 +118,116 @@ const EditGoal = ({ navigation, route }) => {
       ]
     );
   };
-
   const performDelete = async () => {
     try {
       await apiService.delete(`/goals/${goalId}`);
       Alert.alert('Success', 'Goal deleted successfully!');
       navigation.navigate('GoalsList');
     } catch (error) {
-      console.error('Error deleting goal:', error);
       Alert.alert('Error', 'Failed to delete goal. Please try again.');
     }
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading goal...</Text>
-      </View>
-    );
+    return <Loading fullScreen text="Loading goal..." />;
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={commonStyles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Goal</Text>
-          <TouchableOpacity
-            style={[styles.saveButton, !isFormValid && styles.saveButtonDisabled]}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, backgroundColor: colors.background.primary, borderBottomWidth: 1, borderBottomColor: colors.neutral.gray100 }}>
+          <Button title="Cancel" variant="ghost" onPress={handleCancel} />
+          <Text style={textStyles.h4}>Edit Goal</Text>
+          <Button
+            title={isSaving ? 'Saving...' : 'Save'}
             onPress={handleSave}
             disabled={!isFormValid || isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
+            loading={isSaving}
+          />
         </View>
-
         {/* Goal Name */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Goal Name *</Text>
-          <TextInput
-            style={[styles.input, errors.goalName && styles.inputError]}
-            placeholder="Enter your goal name"
-            value={goalName}
-            onChangeText={setGoalName}
-            maxLength={100}
-          />
-          {errors.goalName && <Text style={styles.errorText}>{errors.goalName}</Text>}
+        <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
+          <Text style={textStyles.label}>Goal Name *</Text>
+          <View style={{ borderWidth: 1, borderColor: errors.goalName ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
+            <Text
+              style={{ padding: spacing.md, fontSize: 16 }}
+              selectable={false}
+            >
+              <TextInput
+                style={{ fontSize: 16 }}
+                placeholder="Enter your goal name"
+                value={goalName}
+                onChangeText={setGoalName}
+                maxLength={100}
+              />
+            </Text>
+          </View>
+          {errors.goalName && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.goalName}</Text>}
         </View>
-
         {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Description *</Text>
-          <TextInput
-            style={[styles.textArea, errors.description && styles.inputError]}
-            placeholder="Describe your goal in detail..."
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            maxLength={500}
-          />
-          <Text style={styles.characterCount}>
-            {description.length}/500 characters
-          </Text>
-          {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+        <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
+          <Text style={textStyles.label}>Description *</Text>
+          <View style={{ borderWidth: 1, borderColor: errors.description ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
+            <TextInput
+              style={{ fontSize: 16, minHeight: 100, padding: spacing.md }}
+              placeholder="Describe your goal in detail..."
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              maxLength={500}
+            />
+          </View>
+          <Text style={{ color: colors.text.secondary, fontSize: 12, textAlign: 'right', marginTop: 5 }}>{description.length}/500 characters</Text>
+          {errors.description && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.description}</Text>}
         </View>
-
         {/* Deadline */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Deadline *</Text>
-          <TextInput
-            style={[styles.input, errors.deadline && styles.inputError]}
-            placeholder="Select deadline"
-            value={deadline}
-            onChangeText={setDeadline}
-          />
-          <Text style={styles.helperText}>
-            Format: YYYY-MM-DD (e.g., 2024-12-31)
-          </Text>
-          {errors.deadline && <Text style={styles.errorText}>{errors.deadline}</Text>}
+        <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
+          <Text style={textStyles.label}>Deadline *</Text>
+          <View style={{ borderWidth: 1, borderColor: errors.deadline ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
+            <TextInput
+              style={{ fontSize: 16, padding: spacing.md }}
+              placeholder="Select deadline"
+              value={deadline}
+              onChangeText={setDeadline}
+            />
+          </View>
+          <Text style={{ color: colors.text.secondary, fontSize: 12, marginTop: 5 }}>Format: YYYY-MM-DD (e.g., 2024-12-31)</Text>
+          {errors.deadline && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.deadline}</Text>}
         </View>
-
         {/* Priority */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Priority *</Text>
-          <View style={styles.priorityContainer}>
+        <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
+          <Text style={textStyles.label}>Priority *</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm }}>
             {priorities.map((priorityOption) => (
-              <TouchableOpacity
+              <Button
                 key={priorityOption.value}
-                style={[
-                  styles.priorityButton,
-                  priority === priorityOption.value && styles.priorityButtonSelected,
-                  { borderColor: priorityOption.color }
-                ]}
+                title={priorityOption.icon + ' ' + priorityOption.label}
+                variant={priority === priorityOption.value ? 'primary' : 'outline'}
+                style={{ flex: 1, borderColor: priorityOption.color }}
                 onPress={() => setPriority(priorityOption.value)}
-              >
-                <Text style={styles.priorityIcon}>{priorityOption.icon}</Text>
-                <Text style={[
-                  styles.priorityText,
-                  priority === priorityOption.value && styles.priorityTextSelected
-                ]}>
-                  {priorityOption.label}
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         </View>
-
         {/* Change History Placeholder */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Change History</Text>
-          <Text style={styles.helperText}>Change history will be displayed here in the future.</Text>
+        <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
+          <Text style={textStyles.h5}>Change History</Text>
+          <Text style={{ color: colors.text.secondary, fontSize: 12, marginTop: 5 }}>Change history will be displayed here in the future.</Text>
         </View>
-
         {/* Delete Button */}
-        <View style={styles.deleteSection}>
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Delete Goal</Text>
-          </TouchableOpacity>
+        <View style={{ marginTop: spacing.lg, alignItems: 'center' }}>
+          <Button title="Delete Goal" variant="danger" onPress={handleDelete} />
         </View>
-
-        {/* Bottom spacing */}
-        <View style={styles.bottomSpacing} />
+        <View style={{ height: 50 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  cancelButton: {
-    padding: 8,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  textArea: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    minHeight: 100,
-  },
-  inputError: {
-    borderColor: '#dc3545',
-  },
-  errorText: {
-    color: '#dc3545',
-    fontSize: 12,
-    marginTop: 5,
-  },
-  helperText: {
-    color: '#666',
-    fontSize: 12,
-    marginTop: 5,
-  },
-  characterCount: {
-    color: '#666',
-    fontSize: 12,
-    textAlign: 'right',
-    marginTop: 5,
-  },
-  priorityContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  priorityButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    borderWidth: 2,
-    backgroundColor: '#fff',
-  },
-  priorityButtonSelected: {
-    backgroundColor: '#f8f9fa',
-  },
-  priorityIcon: {
-    fontSize: 16,
-    marginRight: 5,
-  },
-  priorityText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  priorityTextSelected: {
-    color: '#333',
-  },
-  deleteSection: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  deleteButton: {
-    backgroundColor: '#dc3545',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  bottomSpacing: {
-    height: 50,
-  },
-});
 
 export default EditGoal; 

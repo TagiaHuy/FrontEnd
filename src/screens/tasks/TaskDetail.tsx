@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  TextInput
-} from 'react-native';
+import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity } from 'react-native';
 import { apiService } from '../../services/api';
+import { Button, Loading } from '../../components/ui';
+import { colors, spacing, textStyles, commonStyles } from '../../styles';
+import { useLoading } from '../../hooks/useLoading';
 
 const statusOptions = [
   { value: 'pending', label: 'Pending' },
@@ -20,7 +14,7 @@ const statusOptions = [
 
 const TaskDetail = ({ navigation, route }) => {
   const { taskId } = route.params;
-  const [isLoading, setIsLoading] = useState(true);
+  const { isLoading, withLoading } = useLoading(true);
   const [task, setTask] = useState(null);
   const [status, setStatus] = useState('');
   const [comments, setComments] = useState([]);
@@ -29,22 +23,18 @@ const TaskDetail = ({ navigation, route }) => {
   const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   useEffect(() => {
-    loadTask();
+    withLoading(loadTask);
   }, [taskId]);
 
   const loadTask = async () => {
     try {
-      setIsLoading(true);
       const response = await apiService.get(`/tasks/${taskId}`);
       const taskData = response.task || response;
       setTask(taskData);
       setStatus(taskData.status);
-      // TODO: Load comments, related tasks, time tracking, attachments, dependencies
     } catch (error) {
       setTask(null);
       Alert.alert('Error', 'Failed to load task.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -64,7 +54,6 @@ const TaskDetail = ({ navigation, route }) => {
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;
-    // TODO: Call API to add comment
     setComments((prev) => [
       ...prev,
       { id: Date.now(), content: newComment, author: 'You', created_at: new Date().toISOString() }
@@ -73,286 +62,109 @@ const TaskDetail = ({ navigation, route }) => {
   };
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading task...</Text>
-      </View>
-    );
+    return <Loading fullScreen text="Loading task..." />;
   }
 
   if (!task) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Task not found</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadTask}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
+        <Text style={textStyles.h4}>Task not found</Text>
+        <Button title="Retry" onPress={loadTask} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={commonStyles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Task Detail</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.lg, backgroundColor: colors.background.primary, borderBottomWidth: 1, borderBottomColor: colors.neutral.gray100 }}>
+        <Button title="← Back" variant="ghost" onPress={() => navigation.goBack()} />
+        <Text style={[textStyles.h4, { marginLeft: spacing.md }]}>Task Detail</Text>
       </View>
-
       {/* Task Information */}
-      <View style={styles.section}>
-        <Text style={styles.title}>{task.title}</Text>
-        <Text style={styles.label}>Description:</Text>
-        <Text style={styles.value}>{task.description}</Text>
-        <Text style={styles.label}>Goal:</Text>
-        <Text style={styles.value}>{task.goal_title || task.goal?.name || '-'}</Text>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.h5}>{task.title}</Text>
+        <Text style={textStyles.label}>Description:</Text>
+        <Text style={textStyles.body2}>{task.description}</Text>
+        <Text style={textStyles.label}>Goal:</Text>
+        <Text style={textStyles.body2}>{task.goal_title || task.goal?.name || '-'}</Text>
         {task.phase_title || task.phase?.title ? (
           <>
-            <Text style={styles.label}>Phase:</Text>
-            <Text style={styles.value}>{task.phase_title || task.phase?.title}</Text>
+            <Text style={textStyles.label}>Phase:</Text>
+            <Text style={textStyles.body2}>{task.phase_title || task.phase?.title}</Text>
           </>
         ) : null}
-        <Text style={styles.label}>Deadline:</Text>
-        <Text style={styles.value}>{task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}</Text>
-        <Text style={styles.label}>Priority:</Text>
-        <Text style={styles.value}>{task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : '-'}</Text>
+        <Text style={textStyles.label}>Deadline:</Text>
+        <Text style={textStyles.body2}>{task.deadline ? new Date(task.deadline).toLocaleDateString() : '-'}</Text>
+        <Text style={textStyles.label}>Priority:</Text>
+        <Text style={textStyles.body2}>{task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : '-'}</Text>
       </View>
-
       {/* Status Update */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Status:</Text>
-        <View style={styles.statusRow}>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Status:</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm }}>
           {statusOptions.map((opt) => (
-            <TouchableOpacity
+            <Button
               key={opt.value}
-              style={[styles.statusButton, status === opt.value && styles.statusButtonSelected]}
+              title={opt.label}
+              variant={status === opt.value ? 'primary' : 'outline'}
               onPress={() => handleStatusUpdate(opt.value)}
-              disabled={isSavingStatus}
-            >
-              <Text style={styles.statusButtonText}>{opt.label}</Text>
-            </TouchableOpacity>
+              loading={isSavingStatus && status === opt.value}
+              style={{ minWidth: 100 }}
+            />
           ))}
         </View>
       </View>
-
       {/* Comments Section */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Comments</Text>
-        {comments.length === 0 && <Text style={styles.value}>No comments yet.</Text>}
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Comments</Text>
+        {comments.length === 0 && <Text style={textStyles.body2}>No comments yet.</Text>}
         {comments.map((comment) => (
-          <View key={comment.id} style={styles.commentItem}>
-            <Text style={styles.commentAuthor}>{comment.author}</Text>
-            <Text style={styles.commentContent}>{comment.content}</Text>
-            <Text style={styles.commentDate}>{new Date(comment.created_at).toLocaleString()}</Text>
+          <View key={comment.id} style={{ backgroundColor: colors.background.secondary, borderRadius: 8, padding: spacing.md, marginBottom: spacing.xs }}>
+            <Text style={{ fontWeight: 'bold', color: colors.primary.main, marginBottom: 2 }}>{comment.author}</Text>
+            <Text style={textStyles.body2}>{comment.content}</Text>
+            <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>{new Date(comment.created_at).toLocaleString()}</Text>
           </View>
         ))}
-        <View style={styles.addCommentRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md }}>
           <TextInput
-            style={styles.commentInput}
+            style={{ flex: 1, backgroundColor: colors.background.secondary, borderRadius: 8, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 14, borderWidth: 1, borderColor: colors.neutral.gray100, marginRight: spacing.sm }}
             placeholder="Add a comment..."
             value={newComment}
             onChangeText={setNewComment}
           />
-          <TouchableOpacity style={styles.addCommentButton} onPress={handleAddComment}>
-            <Text style={styles.addCommentButtonText}>Send</Text>
-          </TouchableOpacity>
+          <Button title="Send" onPress={handleAddComment} style={{ minWidth: 70 }} />
         </View>
       </View>
-
       {/* Time Tracking Placeholder */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Time Tracking</Text>
-        <Text style={styles.value}>Time tracking will be displayed here.</Text>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Time Tracking</Text>
+        <Text style={textStyles.body2}>Time tracking will be displayed here.</Text>
       </View>
-
       {/* Related Tasks Placeholder */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Related Tasks</Text>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Related Tasks</Text>
         {relatedTasks.length === 0 ? (
-          <Text style={styles.value}>No related tasks.</Text>
+          <Text style={textStyles.body2}>No related tasks.</Text>
         ) : (
           relatedTasks.map((t) => (
-            <Text key={t.id} style={styles.value}>{t.title}</Text>
+            <Text key={t.id} style={textStyles.body2}>{t.title}</Text>
           ))
         )}
       </View>
-
       {/* File Attachments Placeholder */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Attachments</Text>
-        <Text style={styles.value}>File attachments will be displayed here.</Text>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Attachments</Text>
+        <Text style={textStyles.body2}>File attachments will be displayed here.</Text>
       </View>
-
       {/* Dependencies Placeholder */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Dependencies</Text>
-        <Text style={styles.value}>Task dependencies will be displayed here.</Text>
+      <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
+        <Text style={textStyles.label}>Dependencies</Text>
+        <Text style={textStyles.body2}>Task dependencies will be displayed here.</Text>
       </View>
-
-      {/* Bottom spacing */}
-      <View style={styles.bottomSpacing} />
+      <View style={{ height: 50 }} />
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 10,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    padding: 20,
-    borderRadius: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginTop: 10,
-  },
-  value: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 5,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  statusButton: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  statusButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#e3f2fd',
-  },
-  statusButtonText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  commentItem: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-  },
-  commentAuthor: {
-    fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 2,
-  },
-  commentContent: {
-    fontSize: 14,
-    color: '#333',
-  },
-  commentDate: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  addCommentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    marginRight: 10,
-  },
-  addCommentButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addCommentButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  bottomSpacing: {
-    height: 50,
-  },
-});
 
 export default TaskDetail; 

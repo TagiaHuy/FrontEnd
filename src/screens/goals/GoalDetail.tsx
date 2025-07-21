@@ -1,34 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  RefreshControl
-} from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
+import { useLoading } from '../../hooks/useLoading';
+import { useApi } from '../../hooks/useApi';
+import { Card, ProgressBar, Button, Badge, Loading } from '../../components/ui';
+import PhaseCard from '../../components/features/goals/PhaseCard';
+import QuickActionsMenu from '../../components/features/goals/QuickActionsMenu';
+import { colors, spacing, textStyles, priorityColors, statusColors, commonStyles } from '../../styles';
 
-interface GoalDetailProps {
-  navigation: any;
-  route: {
-    params: {
-      goalId: number;
-    };
-  };
-}
-
-const { width } = Dimensions.get('window');
-
-const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
+const GoalDetail = ({ navigation, route }) => {
   const { user } = useAuth();
   const { goalId } = route.params;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Loading state
+  const { isLoading, withLoading } = useLoading(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [goal, setGoal] = useState(null);
   const [phases, setPhases] = useState([]);
@@ -36,17 +22,17 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
   const [progress, setProgress] = useState(0);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [selectedPhaseId, setSelectedPhaseId] = useState(null);
-  const [phaseTasksMap, setPhaseTasksMap] = useState({}); // { [phaseId]: [tasks] }
+  const [phaseTasksMap, setPhaseTasksMap] = useState({});
   const [loadingPhaseId, setLoadingPhaseId] = useState(null);
-  const [updatingTaskIds, setUpdatingTaskIds] = useState([]); // Để disable khi đang update
+  const [updatingTaskIds, setUpdatingTaskIds] = useState([]);
 
   useEffect(() => {
-    loadGoalDetail();
+    withLoading(loadGoalDetail);
   }, [goalId]);
 
   const loadGoalDetail = async () => {
+    // ... giữ nguyên logic fetch API ...
     try {
-      setIsLoading(true);
       // Load goal information
       const goalResponse = await apiService.get(`/goals/${goalId}`);
       const goalData = goalResponse.goal || goalResponse;
@@ -54,34 +40,23 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
       // Load progress with phases
       const progressResponse = await apiService.get(`/goals/${goalId}/progress-with-phases`);
       setPhases(progressResponse.phases || []);
-      // Prefer overall_progress from progressResponse, fallback to progress from goalData
-      setProgress(
-        progressResponse.goal?.overall_progress ?? goalData.progress ?? 0
-      );
-      // Load tasks from API (replace mock data)
+      setProgress(progressResponse.goal?.overall_progress ?? goalData.progress ?? 0);
+      // Load tasks from API
       const tasksResponse = await apiService.get(`/tasks?goal_id=${goalId}`);
       setTasks(tasksResponse.tasks || []);
-      // Thêm log để debug
-      console.log('Phases:', progressResponse.phases);
-      console.log('Tasks:', tasksResponse.tasks);
     } catch (error) {
       console.error('Error loading goal detail:', error);
-      // Optionally: setTasks([]); // Do not use mock data
     } finally {
-      setIsLoading(false);
       setIsRefreshing(false);
     }
   };
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    loadGoalDetail();
+    withLoading(loadGoalDetail);
   };
 
-  const handleEdit = () => {
-    navigation.navigate('EditGoal', { goalId });
-  };
-
+  const handleEdit = () => navigation.navigate('EditGoal', { goalId });
   const handleDelete = () => {
     Alert.alert(
       'Delete Goal',
@@ -92,14 +67,12 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
       ]
     );
   };
-
   const performDelete = async () => {
     try {
       await apiService.delete(`/goals/${goalId}`);
       Alert.alert('Success', 'Goal deleted successfully!');
       navigation.goBack();
     } catch (error) {
-      console.error('Error deleting goal:', error);
       Alert.alert('Error', 'Failed to delete goal. Please try again.');
     }
   };
@@ -119,94 +92,24 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
         navigation.navigate('AddPhase', { goalId });
         break;
       case 'share':
-        shareGoal();
+        Alert.alert('Share', 'Sharing functionality will be implemented.');
         break;
       default:
         break;
     }
     setShowQuickActions(false);
   };
-
   const updateGoalStatus = async (newStatus) => {
     try {
-      const response = await apiService.put(`/goals/${goalId}`, { status: newStatus });
+      await apiService.put(`/goals/${goalId}`, { status: newStatus });
       setGoal(prev => ({ ...prev, status: newStatus }));
       Alert.alert('Success', `Goal marked as ${newStatus.replace('_', ' ')}!`);
     } catch (error) {
-      console.error('Error updating goal status:', error);
       Alert.alert('Error', 'Failed to update goal status. Please try again.');
     }
   };
 
-  const shareGoal = () => {
-    // TODO: Implement sharing functionality
-    Alert.alert('Share', 'Sharing functionality will be implemented.');
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return '#28a745';
-      case 'in_progress': return '#007AFF';
-      case 'not_started': return '#6c757d';
-      default: return '#6c757d';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High': return '#dc3545';
-      case 'Medium': return '#ffc107';
-      case 'Low': return '#28a745';
-      default: return '#6c757d';
-    }
-  };
-
-  const getPhaseStatusIcon = (status) => {
-    switch (status) {
-      case 'completed': return '✅';
-      case 'in_progress': return '🔄';
-      case 'not_started': return '⏳';
-      default: return '⏳';
-    }
-  };
-
-  const getTaskStatusIcon = (status) => {
-    switch (status) {
-      case 'completed': return '✅';
-      case 'in_progress': return '🔄';
-      case 'not_started': return '⏳';
-      default: return '⏳';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const formatPriority = (priority: string) => {
-    if (!priority) return '';
-    return priority.charAt(0).toUpperCase() + priority.slice(1);
-  };
-
-  const formatStatus = (status: string) => {
-    if (!status) return '';
-    return status.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-  };
-
-  const getDaysRemaining = (deadline: string) => {
-    const today = new Date();
-    const deadlineDate = new Date(deadline);
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  // Khi nhấn vào 1 phase, gọi API lấy tasks của phase đó nếu chưa có
+  // Phase expand/collapse
   const handleExpandPhase = async (phase) => {
     if (selectedPhaseId === phase.id) {
       setSelectedPhaseId(null);
@@ -225,8 +128,7 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
       }
     }
   };
-
-  // Hàm cập nhật trạng thái task (toggle complete)
+  // Toggle task complete
   const handleToggleTaskComplete = async (task, phaseId) => {
     const newStatus = task.status === 'completed' ? 'in_progress' : 'completed';
     setUpdatingTaskIds((prev) => [...prev, task.id]);
@@ -243,721 +145,153 @@ const GoalDetail = ({ navigation, route }: GoalDetailProps) => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading goal details...</Text>
-      </View>
-    );
-  }
+  // Helper
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+  const formatPriority = (priority) => priority ? priority.charAt(0).toUpperCase() + priority.slice(1) : '';
+  const formatStatus = (status) => status ? status.replace(/_/g, ' ').replace(/^[a-z]/, c => c.toUpperCase()) : '';
+  const getDaysRemaining = (deadline) => {
+    const today = new Date();
+    const deadlineDate = new Date(deadline);
+    const diffTime = deadlineDate.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
+  if (isLoading) {
+    return <Loading fullScreen text="Loading goal details..." />;
+  }
   if (!goal) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Goal not found</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadGoalDetail}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
+      <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
+        <Text style={textStyles.h4}>Goal not found</Text>
+        <Button title="Retry" onPress={loadGoalDetail} />
       </View>
     );
   }
-
   const daysRemaining = getDaysRemaining(goal.deadline);
 
+  // Quick actions
+  const quickActions = [
+    { id: 'mark_complete', icon: '✅', label: 'Mark Complete', onPress: () => handleQuickAction('mark_complete') },
+    { id: 'mark_in_progress', icon: '🔄', label: 'Mark In Progress', onPress: () => handleQuickAction('mark_in_progress') },
+    { id: 'add_task', icon: '📝', label: 'Add Task', onPress: () => handleQuickAction('add_task') },
+    { id: 'add_phase', icon: '📋', label: 'Add Phase', onPress: () => handleQuickAction('add_phase') },
+    { id: 'share', icon: '📤', label: 'Share', onPress: () => handleQuickAction('share') },
+  ];
+
   return (
-    <View style={styles.container}>
+    <View style={commonStyles.container}>
       <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickActionsButton}
-              onPress={() => setShowQuickActions(!showQuickActions)}
-            >
-              <Text style={styles.quickActionsIcon}>⋯</Text>
-            </TouchableOpacity>
+        {/* Header + Quick Actions */}
+        <Card style={{ margin: spacing.md, padding: spacing.lg }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Button title="← Back" variant="ghost" onPress={() => navigation.goBack()} />
+            <Button title="⋯" variant="ghost" onPress={() => setShowQuickActions(!showQuickActions)} />
           </View>
-
           {showQuickActions && (
-            <View style={styles.quickActionsMenu}>
-              <TouchableOpacity
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction('mark_complete')}
-              >
-                <Text style={styles.quickActionIcon}>✅</Text>
-                <Text style={styles.quickActionText}>Mark Complete</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction('mark_in_progress')}
-              >
-                <Text style={styles.quickActionIcon}>🔄</Text>
-                <Text style={styles.quickActionText}>Mark In Progress</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction('add_task')}
-              >
-                <Text style={styles.quickActionIcon}>📝</Text>
-                <Text style={styles.quickActionText}>Add Task</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction('add_phase')}
-              >
-                <Text style={styles.quickActionIcon}>📋</Text>
-                <Text style={styles.quickActionText}>Add Phase</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickActionItem}
-                onPress={() => handleQuickAction('share')}
-              >
-                <Text style={styles.quickActionIcon}>📤</Text>
-                <Text style={styles.quickActionText}>Share</Text>
-              </TouchableOpacity>
-            </View>
+            <QuickActionsMenu actions={quickActions} />
           )}
-        </View>
-
-        {/* Goal Information */}
-        <View style={styles.goalInfo}>
-          <View style={styles.goalHeader}>
-            <Text style={styles.goalTitle}>{goal.name}</Text>
-            <View style={styles.goalMeta}>
-              <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(goal.priority) }]}>
-                <Text style={styles.priorityText}>{formatPriority(goal.priority)}</Text>
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(goal.status) }]}>
-                <Text style={styles.statusText}>{formatStatus(goal.status)}</Text>
-              </View>
-            </View>
+        </Card>
+        {/* Goal Info */}
+        <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
+          <Text style={textStyles.h3}>{goal.name}</Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm }}>
+            <Badge label={formatPriority(goal.priority)} style={{ backgroundColor: priorityColors[goal.priority?.toLowerCase?.() || 'low'] }} />
+            <Badge label={formatStatus(goal.status)} style={{ backgroundColor: statusColors[goal.status] }} />
           </View>
-
-          <Text style={styles.goalDescription}>{goal.description}</Text>
-
-          <View style={styles.goalDetails}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Deadline:</Text>
-              <Text style={styles.detailValue}>{formatDate(goal.deadline)}</Text>
-              <Text style={[styles.daysRemaining, daysRemaining < 0 && styles.overdue]}>
-                {daysRemaining < 0 ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days remaining`}
-              </Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Created:</Text>
-              <Text style={styles.detailValue}>{formatDate(goal.created_at || goal.createdAt)}</Text>
-            </View>
-            {goal.category && (
-              <View style={styles.detailItem}>
-                <Text style={styles.detailLabel}>Category:</Text>
-                <Text style={styles.detailValue}>{goal.category}</Text>
-              </View>
-            )}
+          <Text style={[textStyles.body2, { color: colors.text.secondary, marginBottom: spacing.md }]}>{goal.description}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+            <Text style={textStyles.body2}>Deadline: {formatDate(goal.deadline)}
+              <Text style={{ color: daysRemaining < 0 ? colors.error.main : colors.success.main, fontWeight: 'bold' }}>  {daysRemaining < 0 ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days remaining`}</Text>
+            </Text>
+            <Text style={textStyles.body2}>Created: {formatDate(goal.created_at || goal.createdAt)}</Text>
+            {goal.category && <Text style={textStyles.body2}>Category: {goal.category}</Text>}
           </View>
-
           {goal.tags && goal.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
-              {goal.tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag}</Text>
-                </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
+              {goal.tags.map((tag, idx) => (
+                <Badge key={idx} label={`#${tag}`} variant="info" size="small" style={{ marginRight: spacing.xs }} />
               ))}
             </View>
           )}
-        </View>
-
+        </Card>
         {/* Progress Bar */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Overall Progress</Text>
-            <Text style={styles.progressPercentage}>{progress}%</Text>
+        <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+            <Text style={textStyles.h4}>Overall Progress</Text>
+            <Text style={textStyles.h4}>{progress}%</Text>
           </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progress}%`, backgroundColor: getStatusColor(goal.status) }
-              ]}
-            />
-          </View>
-        </View>
-
+          <ProgressBar progress={progress} variant={goal.status === 'completed' ? 'success' : 'primary'} size="large" showLabel labelPosition="bottom" />
+        </Card>
         {/* Phases List */}
-        <View style={styles.phasesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Phases</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('CreatePhase', { goalId: goal.id, lastOrderNumber: phases.length })}
-            >
-              <Text style={styles.addButtonText}>+ Add Phase</Text>
-            </TouchableOpacity>
+        <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+            <Text style={textStyles.h4}>Phases</Text>
+            <Button title="+ Add Phase" size="small" onPress={() => navigation.navigate('CreatePhase', { goalId: goal.id, lastOrderNumber: phases.length })} />
           </View>
-          {phases.map((phase) => {
-            const isSelected = selectedPhaseId === phase.id;
-            const phaseTasks = phaseTasksMap[phase.id] || [];
-            return (
-              <View key={phase.id} style={styles.phaseCard}>
-                <TouchableOpacity onPress={() => handleExpandPhase(phase)}>
-                  <View style={styles.phaseHeader}>
-                    <View style={styles.phaseInfo}>
-                      <Text style={styles.phaseIcon}>{getPhaseStatusIcon(phase.status)}</Text>
-                      <Text style={styles.phaseName}>{phase.title}</Text>
-                    </View>
-                    <Text style={styles.phaseProgress}>{phase.progress}%</Text>
-                  </View>
-                </TouchableOpacity>
-                {/* Không có description trong API progress-with-phases, nếu cần lấy thì phải gọi API khác */}
-                <View style={styles.phaseProgressBar}>
-                  <View
-                    style={[
-                      styles.phaseProgressFill,
-                      { width: `${phase.progress}%`, backgroundColor: getStatusColor(phase.status) }
-                    ]}
-                  />
-                </View>
-                <View style={styles.phaseMeta}>
-                  <Text style={styles.phaseTasks}>
-                    {phase.completed_tasks}/{phase.total_tasks} tasks completed
-                  </Text>
-                </View>
-                {/* Hiển thị danh sách task nếu phase được chọn */}
-                {isSelected && (
-                  <View style={{ marginTop: 10 }}>
-                    {loadingPhaseId === phase.id ? (
-                      <ActivityIndicator size="small" color="#007AFF" />
-                    ) : (
-                      phaseTasks.length === 0 ? (
-                        <Text style={styles.value}>No tasks in this phase.</Text>
-                      ) : (
-                        phaseTasks.map(task => (
-                          <View key={task.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                            <TouchableOpacity
-                              style={[styles.checkbox, task.status === 'completed' && styles.checkboxChecked]}
-                              onPress={() => handleToggleTaskComplete(task, phase.id)}
-                              disabled={updatingTaskIds.includes(task.id)}
-                            >
-                              {task.status === 'completed' && <Text style={styles.checkboxTick}>✓</Text>}
-                            </TouchableOpacity>
-                            <Text style={[styles.taskTitle, { flex: 1, marginLeft: 8, color: task.status === 'completed' ? '#999' : '#333', textDecorationLine: task.status === 'completed' ? 'line-through' : 'none' }]}>{task.title}</Text>
-                          </View>
-                        ))
-                      )
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Tasks Overview */}
-        <View style={styles.tasksSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tasks Overview</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => navigation.navigate('CreateTask', { goalId: goal.id })}
-            >
-              <Text style={styles.addButtonText}>+ Add Task</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.tasksSummary}>
-            <View style={styles.taskStat}>
-              <Text style={styles.taskStatNumber}>
-                {tasks.filter(task => task.status === 'completed').length}
-              </Text>
-              <Text style={styles.taskStatLabel}>Completed</Text>
-            </View>
-            <View style={styles.taskStat}>
-              <Text style={styles.taskStatNumber}>
-                {tasks.filter(task => task.status === 'in_progress').length}
-              </Text>
-              <Text style={styles.taskStatLabel}>In Progress</Text>
-            </View>
-            <View style={styles.taskStat}>
-              <Text style={styles.taskStatNumber}>
-                {tasks.filter(task => task.status === 'not_started').length}
-              </Text>
-              <Text style={styles.taskStatLabel}>Pending</Text>
-            </View>
-          </View>
-
-          {tasks.slice(0, 5).map((task) => (
-            <TouchableOpacity
-              key={task.id}
-              style={styles.taskItem}
-              onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
-            >
-              <Text style={styles.taskIcon}>{getTaskStatusIcon(task.status)}</Text>
-              <View style={styles.taskInfo}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskPhase}>{task.phase}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={styles.taskStatus}>{formatStatus(task.status)}</Text>
-                  {task.deadline && (
-                    <Text style={styles.taskDeadline}> | Due: {formatDate(task.deadline)}</Text>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
+          {phases.map(phase => (
+            <PhaseCard
+              key={phase.id}
+              phase={phase}
+              isSelected={selectedPhaseId === phase.id}
+              onExpand={handleExpandPhase}
+              tasks={phaseTasksMap[phase.id] || []}
+              loadingTasks={loadingPhaseId === phase.id}
+              onToggleTask={task => handleToggleTaskComplete(task, phase.id)}
+              updatingTaskIds={updatingTaskIds}
+            />
           ))}
-
+        </Card>
+        {/* Tasks Overview */}
+        <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+            <Text style={textStyles.h4}>Tasks Overview</Text>
+            <Button title="+ Add Task" size="small" onPress={() => navigation.navigate('CreateTask', { goalId: goal.id })} />
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: spacing.md }}>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={textStyles.h3}>{tasks.filter(task => task.status === 'completed').length}</Text>
+              <Text style={textStyles.body3}>Completed</Text>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={textStyles.h3}>{tasks.filter(task => task.status === 'in_progress').length}</Text>
+              <Text style={textStyles.body3}>In Progress</Text>
+            </View>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={textStyles.h3}>{tasks.filter(task => task.status === 'not_started').length}</Text>
+              <Text style={textStyles.body3}>Pending</Text>
+            </View>
+          </View>
+          {tasks.slice(0, 5).map(task => (
+            <Card key={task.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, padding: spacing.md }}>
+              <Text style={{ fontSize: 16, marginRight: spacing.md }}>{task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '⏳'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={textStyles.body2}>{task.title}</Text>
+                <Text style={textStyles.caption}>{task.phase}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <Text style={textStyles.caption}>{formatStatus(task.status)}</Text>
+                  {task.deadline && <Text style={textStyles.caption}> | Due: {formatDate(task.deadline)}</Text>}
+                </View>
+              </View>
+            </Card>
+          ))}
           {tasks.length > 5 && (
-            <TouchableOpacity style={styles.viewAllButton}>
-              <Text style={styles.viewAllButtonText}>
-                View all {tasks.length} tasks
-              </Text>
-            </TouchableOpacity>
+            <Button title={`View all ${tasks.length} tasks`} variant="ghost" onPress={() => {}} />
           )}
-        </View>
-
+        </Card>
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
-            <Text style={styles.editButtonText}>Edit Goal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Delete Goal</Text>
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: spacing.md, margin: spacing.md }}>
+          <Button title="Edit Goal" onPress={handleEdit} />
+          <Button title="Delete Goal" variant="danger" onPress={handleDelete} />
         </View>
-
-        {/* Bottom spacing */}
-        <View style={styles.bottomSpacing} />
+        <View style={{ height: 50 }} />
       </ScrollView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
-  quickActionsButton: {
-    padding: 8,
-  },
-  quickActionsIcon: {
-    fontSize: 20,
-    color: '#666',
-  },
-  quickActionsMenu: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  quickActionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  quickActionIcon: {
-    fontSize: 16,
-    marginRight: 10,
-  },
-  quickActionText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  goalInfo: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginTop: 10,
-  },
-  goalHeader: {
-    marginBottom: 15,
-  },
-  goalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  goalMeta: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  priorityText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  goalDescription: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  goalDetails: {
-    marginBottom: 15,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-    width: 80,
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '600',
-    flex: 1,
-  },
-  daysRemaining: {
-    fontSize: 12,
-    color: '#28a745',
-    fontWeight: '500',
-  },
-  overdue: {
-    color: '#dc3545',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#e3f2fd',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#1976d2',
-    fontWeight: '500',
-  },
-  progressSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginTop: 10,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  progressPercentage: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e9ecef',
-    borderRadius: 4,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  phasesSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginTop: 10,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  addButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  phaseCard: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  phaseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  phaseInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  phaseIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  phaseName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  phaseProgress: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  phaseDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  phaseProgressBar: {
-    height: 4,
-    backgroundColor: '#e9ecef',
-    borderRadius: 2,
-    marginBottom: 10,
-  },
-  phaseProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  phaseMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  phaseTasks: {
-    fontSize: 12,
-    color: '#666',
-  },
-  phaseDates: {
-    fontSize: 12,
-    color: '#666',
-  },
-  tasksSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginTop: 10,
-  },
-  tasksSummary: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  taskStat: {
-    alignItems: 'center',
-  },
-  taskStatNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  taskStatLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  taskIcon: {
-    fontSize: 16,
-    marginRight: 12,
-  },
-  taskInfo: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  taskPhase: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  taskStatus: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  taskDeadline: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 5,
-  },
-  viewAllButton: {
-    alignItems: 'center',
-    paddingVertical: 15,
-  },
-  viewAllButtonText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 15,
-    padding: 20,
-    marginTop: 10,
-  },
-  editButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#dc3545',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  bottomSpacing: {
-    height: 50,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  checkboxChecked: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  checkboxTick: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    lineHeight: 18,
-  },
-  value: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 5,
-  },
-});
 
 export default GoalDetail; 
