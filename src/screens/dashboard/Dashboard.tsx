@@ -1,3 +1,5 @@
+// Dashboard.tsx - Màn hình tổng quan chính của ứng dụng
+
 import React, { useEffect } from 'react';
 import { 
   View, 
@@ -25,11 +27,15 @@ import { colors, textStyles, spacing, commonStyles } from '../../styles';
 const { width } = Dimensions.get('window');
 
 const Dashboard = ({ navigation }) => {
+  // Lấy thông tin user và hàm logout từ context
   const { user, logout } = useAuth();
+
+  // Các hook useApi để quản lý loading và gọi API cho từng loại dữ liệu
   const { isLoading: isLoadingGoals, execute: executeGoals } = useApi();
   const { isLoading: isLoadingTasks, execute: executeTasks } = useApi();
   const { isLoading: isLoadingStats, execute: executeStats } = useApi();
 
+  // State lưu trữ danh sách goals, tasks hôm nay và thống kê
   const [goals, setGoals] = React.useState([]);
   const [todayTasks, setTodayTasks] = React.useState<Task[]>([]);
   const [stats, setStats] = React.useState({
@@ -39,35 +45,38 @@ const Dashboard = ({ navigation }) => {
     completedTasks: 0,
   });
 
+  // useEffect để load dữ liệu dashboard khi component mount
   useEffect(() => {
     loadDashboardData();
   }, []);
 
+  // Hàm load dữ liệu dashboard từ API
   const loadDashboardData = async () => {
     try {
-      // Load goals
+      // Lấy danh sách goals
       const goalsResult = await executeGoals(async () => {
         const goalsData = await apiService.get('/goals');
-        setGoals(goalsData.slice(0, 3)); // Show only 3 recent goals
+        setGoals(goalsData.slice(0, 3)); // Hiển thị 3 goal gần nhất
         return goalsData;
       });
 
-      // Load today's tasks
+      // Lấy danh sách task hôm nay
       const tasksResult = await executeTasks(async () => {
         const tasksData = await apiService.get('/tasks/today');
         setTodayTasks(tasksData);
         return tasksData;
       });
 
-      // Load statistics
+      // Lấy thống kê goals/tasks
       const statsResult = await executeStats(async () => {
         const statsData = await apiService.get('/goals/stats');
         setStats(statsData);
         return statsData;
       });
 
+      // Nếu có lỗi khi lấy dữ liệu, dùng mock data cho dev
       if (!goalsResult.success || !tasksResult.success || !statsResult.success) {
-        // Use mock data for development
+        // Dùng dữ liệu mock cho phát triển
         setMockData();
       }
 
@@ -78,6 +87,7 @@ const Dashboard = ({ navigation }) => {
     }
   };
 
+  // Hàm set dữ liệu mock cho phát triển
   const setMockData = () => {
     setGoals([
       { id: 1, title: 'Learn React Native', progress: 75, deadline: '2024-01-15' },
@@ -97,6 +107,7 @@ const Dashboard = ({ navigation }) => {
     });
   };
 
+  // Hàm xử lý logout
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -108,12 +119,14 @@ const Dashboard = ({ navigation }) => {
     );
   };
 
+  // Các hàm điều hướng đến các màn hình khác
   const handleProfile = () => navigation.navigate('Profile');
   const handleSettings = () => navigation.navigate('Settings');
   const handleAnalytics = () => navigation.navigate('Analytics');
   const handleGoals = () => navigation.navigate('GoalsList');
   const handleAddTask = () => Alert.alert('Add Task', 'Add task functionality will be implemented.');
 
+  // Danh sách các quick action trên dashboard
   const quickActions: QuickAction[] = [
     { id: 'add-task', title: 'Add Task', icon: '📝', onPress: handleAddTask },
     { id: 'profile', title: 'Profile', icon: '👤', onPress: handleProfile },
@@ -122,6 +135,7 @@ const Dashboard = ({ navigation }) => {
     { id: 'goals', title: 'Goals', icon: '🎯', onPress: handleGoals },
   ];
 
+  // Dữ liệu thống kê cho các StatsCard
   const statsData: StatsData[] = [
     {
       completed: stats.completedGoals,
@@ -135,6 +149,7 @@ const Dashboard = ({ navigation }) => {
     },
   ];
 
+  // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
   const handleTaskToggle = (taskId: number, completed: boolean) => {
     setTodayTasks(prev => 
       prev.map(task => 
@@ -143,21 +158,24 @@ const Dashboard = ({ navigation }) => {
     );
   };
 
+  // Xác định trạng thái loading tổng hợp
   const isLoading = isLoadingGoals || isLoadingTasks || isLoadingStats;
 
+  // Hiển thị loading khi đang lấy dữ liệu
   if (isLoading) {
     return <Loading text="Loading dashboard..." fullScreen />;
   }
 
+  // Render UI chính của dashboard
   return (
     <ScrollView style={commonStyles.container}>
-      {/* Header */}
+      {/* Header - Chào mừng user */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>Welcome back, {user?.name}!</Text>
         <Text style={styles.dateText}>{new Date().toLocaleDateString()}</Text>
       </View>
 
-      {/* Progress Overview Cards */}
+      {/* Progress Overview Cards - Thống kê tổng quan */}
       <View style={styles.progressSection}>
         <Text style={styles.sectionTitle}>Progress Overview</Text>
         <View style={styles.progressCards}>
@@ -167,12 +185,12 @@ const Dashboard = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Các hành động nhanh */}
       <View style={styles.quickActionsSection}>
         <QuickActions actions={quickActions} />
       </View>
 
-      {/* Today's Tasks */}
+      {/* Today's Tasks - Danh sách task hôm nay */}
       <View style={styles.tasksSection}>
         <TaskList 
           tasks={todayTasks}
@@ -180,7 +198,7 @@ const Dashboard = ({ navigation }) => {
         />
       </View>
 
-      {/* Recent Goals */}
+      {/* Recent Goals - Các goal gần đây */}
       <View style={styles.goalsSection}>
         <Text style={styles.sectionTitle}>Recent Goals</Text>
         {goals.map((goal) => (
@@ -208,7 +226,7 @@ const Dashboard = ({ navigation }) => {
         ))}
       </View>
 
-      {/* Statistics Chart Placeholder */}
+      {/* Statistics Chart Placeholder - Biểu đồ thống kê (chưa implement) */}
       <View style={styles.statsSection}>
         <Text style={styles.sectionTitle}>Statistics</Text>
         <Card variant="elevated" padding="large" style={styles.chartPlaceholder}>
@@ -218,7 +236,7 @@ const Dashboard = ({ navigation }) => {
         </Card>
       </View>
 
-      {/* Navigation Footer */}
+      {/* Navigation Footer - Nút logout */}
       <View style={styles.footer}>
         <Button
           title="Logout"
@@ -231,6 +249,7 @@ const Dashboard = ({ navigation }) => {
   );
 };
 
+// StyleSheet cho Dashboard
 const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary.main,

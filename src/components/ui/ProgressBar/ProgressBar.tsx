@@ -1,56 +1,63 @@
+// ProgressBar.tsx - Component hiển thị thanh tiến trình với nhiều biến thể màu sắc, kích thước, vị trí label
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, textStyles, spacing, borderRadius } from '../../../styles';
 
+// Định nghĩa các props cho ProgressBar
 export interface ProgressBarProps {
-  progress: number; // 0-100
-  variant?: 'primary' | 'success' | 'warning' | 'error' | 'info';
-  size?: 'small' | 'medium' | 'large';
-  showLabel?: boolean;
-  labelPosition?: 'top' | 'bottom' | 'inside';
-  animated?: boolean;
-  style?: any;
-  labelStyle?: any;
+  progress: number; // Giá trị tiến trình (0-100)
+  variant?: 'primary' | 'success' | 'warning' | 'error' | 'info'; // Kiểu màu sắc
+  size?: 'small' | 'medium' | 'large'; // Kích thước thanh
+  showLabel?: boolean; // Hiển thị label phần trăm hay không
+  labelPosition?: 'top' | 'bottom' | 'inside'; // Vị trí label
+  animated?: boolean; // Có animate không (chưa hỗ trợ)
+  style?: any; // Custom style cho container
+  labelStyle?: any; // Custom style cho label
 }
 
+// Component ProgressBar
 const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   variant = 'primary',
   size = 'medium',
   showLabel = false,
   labelPosition = 'top',
-  animated = false,
+  animated = false, // Hiện tại chưa hỗ trợ animated
   style,
   labelStyle,
 }) => {
-  // Clamp progress between 0 and 100
+  // Clamp progress giữa 0 và 100
   const clampedProgress = Math.max(0, Math.min(100, progress));
 
+  // Style cho container ngoài
   const containerStyle = [
     styles.container,
     styles[size],
     style,
   ];
 
+  // Style cho thanh nền progress
   const progressBarStyle = [
     styles.progressBar,
     styles[`${size}Bar`],
   ];
 
+  // Style cho phần fill tiến trình
   const progressFillStyle = [
     styles.progressFill,
     styles[variant],
     { width: `${clampedProgress}%` as any },
   ];
 
+  // Style cho label phần trăm
   const labelTextStyle = [
     { fontSize: 16, color: 'black', fontWeight: 'bold' },
     labelStyle,
   ];
 
+  // Hàm render label phần trăm (ngoài thanh)
   const renderLabel = () => {
     if (!showLabel) return null;
-    
     return (
       <Text style={labelTextStyle}>
         {Math.round(clampedProgress)}%
@@ -60,11 +67,14 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <View style={styles.wrapper}>
+      {/* Hiển thị label phía trên nếu chọn */}
       {labelPosition === 'top' && renderLabel()}
       
       <View style={containerStyle}>
         <View style={progressBarStyle}>
+          {/* Phần fill tiến trình */}
           <View style={progressFillStyle} />
+          {/* Hiển thị label bên trong thanh nếu chọn */}
           {labelPosition === 'inside' && showLabel && (
             <Text style={[styles.insideLabel, labelStyle]}>
               {Math.round(clampedProgress)}%
@@ -73,11 +83,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
         </View>
       </View>
       
+      {/* Hiển thị label phía dưới nếu chọn */}
       {labelPosition === 'bottom' && renderLabel()}
     </View>
   );
 };
 
+// StyleSheet cho ProgressBar
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
@@ -87,7 +99,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   
-  // Sizes
+  // Các kích thước
   small: {
     marginVertical: spacing.xs,
   },
@@ -98,7 +110,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.md,
   },
   
-  // Progress bar
+  // Thanh nền progress
   progressBar: {
     width: '100%',
     backgroundColor: colors.neutral.gray200,
@@ -117,13 +129,13 @@ const styles = StyleSheet.create({
     height: 8,
   },
   
-  // Progress fill
+  // Phần fill tiến trình
   progressFill: {
     height: '100%',
     borderRadius: borderRadius.full,
   },
   
-  // Variants
+  // Các biến thể màu sắc
   primary: {
     backgroundColor: colors.primary.main,
   },
@@ -140,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.info.main,
   },
   
-  // Labels
+  // Style cho label
   label: {
     ...textStyles.caption,
     color: colors.text.secondary,

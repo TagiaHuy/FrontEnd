@@ -1,13 +1,16 @@
+// Card.tsx - Card component hiển thị khối nội dung với nhiều biến thể (elevated, outlined, filled) và tuỳ chọn padding
 import React from 'react';
 import { View, StyleSheet, ViewProps } from 'react-native';
 import { colors, spacing, borderRadius, shadowOffset, shadowRadius } from '../../../styles';
 
+// Định nghĩa các props cho Card
 export interface CardProps extends ViewProps {
-  variant?: 'elevated' | 'outlined' | 'filled';
-  padding?: 'none' | 'small' | 'medium' | 'large';
-  children: React.ReactNode;
+  variant?: 'elevated' | 'outlined' | 'filled'; // Kiểu hiển thị: nổi bóng, viền, nền đặc
+  padding?: 'none' | 'small' | 'medium' | 'large'; // Độ lớn padding
+  children: React.ReactNode; // Nội dung bên trong Card
 }
 
+// Component Card
 const Card: React.FC<CardProps> = ({
   variant = 'elevated',
   padding = 'medium',
@@ -15,6 +18,7 @@ const Card: React.FC<CardProps> = ({
   style,
   ...props
 }) => {
+  // Tạo style cho Card dựa trên variant và padding
   const cardStyle = [
     styles.base,
     styles[variant],
@@ -29,13 +33,14 @@ const Card: React.FC<CardProps> = ({
   );
 };
 
+// StyleSheet cho Card
 const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.background.primary,
     borderRadius: borderRadius.lg,
   },
   
-  // Variants
+  // Các biến thể hiển thị
   elevated: {
     shadowColor: colors.shadow.medium,
     shadowOffset: shadowOffset.md,
@@ -51,7 +56,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   
-  // Padding variants
+  // Các biến thể padding
   paddingNone: {
     padding: 0,
   },

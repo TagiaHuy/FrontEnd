@@ -1,23 +1,27 @@
+// Analytics.tsx - Màn hình tổng hợp phân tích hiệu suất người dùng
+
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Dimensions,
-  Alert
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
+import Button from '../../components/ui/Button';
+import Loading from '../../components/ui/Loading';
+import StatCard from '../../components/features/analytics/StatCard';
+import ChartPlaceholder from '../../components/features/analytics/ChartPlaceholder';
+import InsightCard from '../../components/features/analytics/InsightCard';
+import { colors, textStyles, spacing, borderRadius } from '../../styles';
 
-const { width } = Dimensions.get('window');
-
+// Component chính cho màn hình Analytics
 const Analytics = () => {
   const { user } = useAuth();
+
+  // State quản lý loading
   const [isLoading, setIsLoading] = useState(true);
+
+  // State cho bộ lọc thời gian (week, month, year)
   const [dateRange, setDateRange] = useState('week'); // week, month, year
+
+  // State thống kê task
   const [taskStats, setTaskStats] = useState({
     total: 0,
     completed: 0,
@@ -25,46 +29,55 @@ const Analytics = () => {
     overdue: 0,
     completionRate: 0,
   });
+
+  // State thống kê goal
   const [goalStats, setGoalStats] = useState({
     total: 0,
     completed: 0,
     inProgress: 0,
     completionRate: 0,
   });
+
+  // State thống kê thời gian làm việc
   const [timeTracking, setTimeTracking] = useState({
     totalHours: 0,
     averagePerDay: 0,
     mostProductiveDay: '',
     weeklyData: [],
   });
+
+  // State cho các insight về năng suất
   const [productivityInsights, setProductivityInsights] = useState([]);
 
+  // useEffect để load lại dữ liệu khi thay đổi dateRange
   useEffect(() => {
     loadAnalyticsData();
   }, [dateRange]);
 
+  // Hàm lấy dữ liệu analytics từ API
   const loadAnalyticsData = async () => {
     try {
       setIsLoading(true);
       
-      // Load task statistics
+      // Lấy thống kê task
       const taskData = await apiService.get(`/tasks/statistics?range=${dateRange}`);
       setTaskStats(taskData);
       
-      // Load goal statistics
+      // Lấy thống kê goal
       const goalData = await apiService.get(`/goals/stats?range=${dateRange}`);
       setGoalStats(goalData);
       
       console.log('Analytics data loaded:', { taskData, goalData });
     } catch (error) {
       console.error('Error loading analytics data:', error);
-      // Use mock data for development
+      // Nếu lỗi thì dùng dữ liệu mock cho dev
       setMockData();
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Hàm set dữ liệu mock cho phát triển
   const setMockData = () => {
     setTaskStats({
       total: 45,
@@ -103,6 +116,7 @@ const Analytics = () => {
     ]);
   };
 
+  // Hàm xử lý export dữ liệu
   const handleExport = () => {
     Alert.alert(
       'Export Analytics',
@@ -115,100 +129,69 @@ const Analytics = () => {
     );
   };
 
+  // Hàm export dữ liệu (chưa implement)
   const exportData = (format: string) => {
     // TODO: Implement export functionality
     Alert.alert('Export', `${format.toUpperCase()} export functionality will be implemented.`);
   };
 
-  const StatCard = ({ title, value, subtitle = null, color = '#007AFF' }) => (
-    <View style={styles.statCard}>
-      <Text style={styles.statTitle}>{title}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-    </View>
-  );
-
-  const ChartPlaceholder = ({ title, data, type = 'bar' }) => (
-    <View style={styles.chartCard}>
-      <Text style={styles.chartTitle}>{title}</Text>
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartIcon}>
-          {type === 'bar' ? '📊' : type === 'line' ? '📈' : '📉'}
-        </Text>
-        <Text style={styles.chartLabel}>Interactive Chart</Text>
-        <Text style={styles.chartNote}>Chart library will be integrated</Text>
-      </View>
-    </View>
-  );
-
+  // Hiển thị loading khi đang lấy dữ liệu
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading analytics...</Text>
-      </View>
-    );
+    return <Loading />;
   }
 
+  // Render UI chính
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Analytics Dashboard</Text>
-        <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
-          <Text style={styles.exportButtonText}>Export</Text>
-        </TouchableOpacity>
+        <Button title="Export" onPress={handleExport} />
       </View>
 
-      {/* Date Range Filter */}
+      {/* Bộ lọc thời gian */}
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Time Period</Text>
         <View style={styles.filterButtons}>
           {['week', 'month', 'year'].map((range) => (
-            <TouchableOpacity
+            <Button
               key={range}
-              style={[
-                styles.filterButton,
-                dateRange === range && styles.activeFilterButton
-              ]}
+              title={range.charAt(0).toUpperCase() + range.slice(1)}
               onPress={() => setDateRange(range)}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                dateRange === range && styles.activeFilterButtonText
-              ]}>
-                {range.charAt(0).toUpperCase() + range.slice(1)}
-              </Text>
-            </TouchableOpacity>
+              variant={dateRange === range ? 'primary' : 'outline'}
+              style={dateRange === range ? styles.activeFilterButton : styles.filterButton}
+              textStyle={dateRange === range ? styles.activeFilterButtonText : styles.filterButtonText}
+            />
           ))}
         </View>
       </View>
 
-      {/* Task Statistics */}
+      {/* Thống kê Task */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Task Statistics</Text>
         <View style={styles.statsGrid}>
           <StatCard 
             title="Total Tasks" 
             value={taskStats.total} 
-            color="#007AFF"
+            color={colors.primary.main}
           />
           <StatCard 
             title="Completed" 
             value={taskStats.completed} 
-            color="#28a745"
+            color={colors.success.main}
           />
           <StatCard 
             title="Pending" 
             value={taskStats.pending} 
-            color="#ffc107"
+            color={colors.warning.main}
           />
           <StatCard 
             title="Overdue" 
             value={taskStats.overdue} 
-            color="#dc3545"
+            color={colors.error.main}
           />
         </View>
+        {/* Tỷ lệ hoàn thành task */}
         <View style={styles.completionCard}>
           <Text style={styles.completionTitle}>Completion Rate</Text>
           <Text style={styles.completionRate}>{taskStats.completionRate}%</Text>
@@ -223,50 +206,54 @@ const Analytics = () => {
         </View>
       </View>
 
-      {/* Goal Statistics */}
+      {/* Thống kê Goal */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Goal Progress</Text>
         <View style={styles.statsGrid}>
           <StatCard 
             title="Total Goals" 
             value={goalStats.total} 
-            color="#007AFF"
+            color={colors.primary.main}
           />
           <StatCard 
             title="Completed" 
             value={goalStats.completed} 
-            color="#28a745"
+            color={colors.success.main}
           />
           <StatCard 
             title="In Progress" 
             value={goalStats.inProgress} 
-            color="#17a2b8"
+            color={colors.info.main}
           />
           <StatCard 
             title="Completion Rate" 
             value={`${goalStats.completionRate}%`} 
-            color="#6f42c1"
+            color={colors.secondary.main}
           />
         </View>
       </View>
 
-      {/* Time Tracking */}
+      {/* Thống kê thời gian làm việc */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Time Tracking</Text>
         <View style={styles.timeStats}>
-          <View style={styles.timeCard}>
-            <Text style={styles.timeLabel}>Total Hours</Text>
-            <Text style={styles.timeValue}>{timeTracking.totalHours}h</Text>
-          </View>
-          <View style={styles.timeCard}>
-            <Text style={styles.timeLabel}>Daily Average</Text>
-            <Text style={styles.timeValue}>{timeTracking.averagePerDay}h</Text>
-          </View>
-          <View style={styles.timeCard}>
-            <Text style={styles.timeLabel}>Most Productive</Text>
-            <Text style={styles.timeValue}>{timeTracking.mostProductiveDay}</Text>
-          </View>
+          <StatCard 
+            title="Total Hours" 
+            value={timeTracking.totalHours} 
+            color={colors.primary.main}
+          />
+          <StatCard 
+            title="Daily Average" 
+            value={timeTracking.averagePerDay} 
+            color={colors.info.main}
+          />
+          <StatCard 
+            title="Most Productive" 
+            value={timeTracking.mostProductiveDay} 
+            color={colors.success.main}
+          />
         </View>
+        {/* Biểu đồ phân phối thời gian trong tuần */}
         <ChartPlaceholder 
           title="Weekly Time Distribution" 
           data={timeTracking.weeklyData} 
@@ -274,7 +261,7 @@ const Analytics = () => {
         />
       </View>
 
-      {/* Performance Charts */}
+      {/* Biểu đồ hiệu suất */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Performance Trends</Text>
         <ChartPlaceholder 
@@ -289,259 +276,148 @@ const Analytics = () => {
         />
       </View>
 
-      {/* Productivity Insights */}
+      {/* Các insight về năng suất */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Productivity Insights</Text>
         {productivityInsights.map((insight, index) => (
-          <View key={index} style={[
-            styles.insightCard,
-            insight.type === 'positive' && styles.positiveInsight,
-            insight.type === 'suggestion' && styles.suggestionInsight,
-            insight.type === 'achievement' && styles.achievementInsight,
-          ]}>
-            <Text style={styles.insightIcon}>
-              {insight.type === 'positive' ? '📈' : 
-               insight.type === 'suggestion' ? '💡' : '🏆'}
-            </Text>
-            <Text style={styles.insightText}>{insight.message}</Text>
-          </View>
+          <InsightCard 
+            key={index} 
+            type={insight.type} 
+            message={insight.message} 
+          />
         ))}
       </View>
     </ScrollView>
   );
 };
 
+// StyleSheet cho màn hình Analytics
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background.primary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background.primary,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: spacing.sm,
     fontSize: 16,
-    color: '#666',
+    color: colors.text.secondary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: spacing.lg,
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: colors.border.light,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text.primary,
   },
   exportButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: colors.primary.main,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
   },
   exportButtonText: {
-    color: '#fff',
+    color: colors.primary.contrast,
     fontSize: 14,
     fontWeight: '600',
   },
   filterSection: {
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: spacing.lg,
+    backgroundColor: colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: colors.border.light,
   },
   filterTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   filterButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: '#dee2e6',
+    borderColor: colors.border.medium,
     alignItems: 'center',
   },
   activeFilterButton: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: colors.primary.main,
+    borderColor: colors.primary.main,
   },
   filterButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: colors.text.secondary,
     fontWeight: '500',
   },
   activeFilterButtonText: {
-    color: '#fff',
+    color: colors.primary.contrast,
   },
   section: {
-    padding: 20,
-    backgroundColor: '#fff',
-    marginBottom: 10,
+    padding: spacing.lg,
+    backgroundColor: colors.background.primary,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 15,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: (width - 60) / 2,
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  statTitle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 2,
-  },
-  statSubtitle: {
-    fontSize: 10,
-    color: '#999',
-    textAlign: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   completionCard: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
+    backgroundColor: colors.background.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
   },
   completionTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
-    marginBottom: 5,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
   },
   completionRate: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 8,
+    color: colors.primary.main,
+    marginBottom: spacing.sm,
   },
   completionBar: {
     height: 6,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
+    backgroundColor: colors.border.light,
+    borderRadius: borderRadius.full,
   },
   completionFill: {
     height: '100%',
-    backgroundColor: '#007AFF',
-    borderRadius: 3,
+    backgroundColor: colors.primary.main,
+    borderRadius: borderRadius.full,
   },
   timeStats: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 15,
-  },
-  timeCard: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  timeValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  chartCard: {
-    backgroundColor: '#f8f9fa',
-    padding: 20,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 15,
-  },
-  chartContainer: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  chartIcon: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  chartLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 5,
-  },
-  chartNote: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  insightCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  positiveInsight: {
-    backgroundColor: '#d4edda',
-    borderLeftWidth: 4,
-    borderLeftColor: '#28a745',
-  },
-  suggestionInsight: {
-    backgroundColor: '#fff3cd',
-    borderLeftWidth: 4,
-    borderLeftColor: '#ffc107',
-  },
-  achievementInsight: {
-    backgroundColor: '#cce5ff',
-    borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-  },
-  insightIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  insightText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
 });
 

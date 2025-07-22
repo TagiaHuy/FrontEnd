@@ -9,11 +9,12 @@ import PhaseCard from '../../components/features/goals/PhaseCard';
 import QuickActionsMenu from '../../components/features/goals/QuickActionsMenu';
 import { colors, spacing, textStyles, priorityColors, statusColors, commonStyles } from '../../styles';
 
+// GoalDetail screen hiển thị chi tiết một goal, bao gồm thông tin, tiến độ, các phase và task liên quan
 const GoalDetail = ({ navigation, route }) => {
   const { user } = useAuth();
   const { goalId } = route.params;
 
-  // Loading state
+  // State quản lý loading, dữ liệu goal, phases, tasks, v.v.
   const { isLoading, withLoading } = useLoading(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [goal, setGoal] = useState(null);
@@ -26,26 +27,28 @@ const GoalDetail = ({ navigation, route }) => {
   const [loadingPhaseId, setLoadingPhaseId] = useState(null);
   const [updatingTaskIds, setUpdatingTaskIds] = useState([]);
 
+  // Load dữ liệu goal khi component mount hoặc goalId thay đổi
   useEffect(() => {
     withLoading(loadGoalDetail);
   }, [goalId]);
 
+  // Hàm load chi tiết goal và roadmap (phases + tasks)
   const loadGoalDetail = async () => {
     try {
-      // Load goal information
+      // Lấy thông tin goal
       const goalResponse = await apiService.get(`/goals/${goalId}`);
       const goalData = goalResponse.goal || goalResponse;
       setGoal(goalData);
-      // Load roadmap (phases + tasks)
+      // Lấy roadmap (danh sách phase và task)
       const roadmapResponse = await apiService.get(`/goals/${goalId}/roadmap`);
       console.log(roadmapResponse);
       // roadmapResponse.roadmap: [{ phase, tasks, milestone }]
       const phasesFromRoadmap = roadmapResponse.roadmap.map(item => ({ ...item.phase, milestone: item.milestone, tasks: item.tasks }));
       setPhases(phasesFromRoadmap);
-      // Flatten all tasks from all phases for Tasks Overview
+      // Gộp tất cả task từ các phase cho phần Tasks Overview
       const allTasks = roadmapResponse.roadmap.flatMap(item => item.tasks.map(task => ({ ...task, phase: item.phase.title })));
       setTasks(allTasks);
-      // Progress: tính tổng progress trung bình các phase hoặc lấy từ goal nếu có
+      // Tính progress tổng thể (lấy từ goal nếu có)
       setProgress(goalData.progress ?? 0);
     } catch (error) {
       console.error('Error loading goal detail:', error);
@@ -54,12 +57,16 @@ const GoalDetail = ({ navigation, route }) => {
     }
   };
 
+  // Kéo để refresh lại dữ liệu
   const handleRefresh = () => {
     setIsRefreshing(true);
     withLoading(loadGoalDetail);
   };
 
+  // Chuyển sang màn hình chỉnh sửa goal
   const handleEdit = () => navigation.navigate('EditGoal', { goalId });
+
+  // Xác nhận xóa goal
   const handleDelete = () => {
     Alert.alert(
       'Delete Goal',
@@ -70,6 +77,8 @@ const GoalDetail = ({ navigation, route }) => {
       ]
     );
   };
+
+  // Thực hiện xóa goal
   const performDelete = async () => {
     try {
       await apiService.delete(`/goals/${goalId}`);
@@ -80,6 +89,7 @@ const GoalDetail = ({ navigation, route }) => {
     }
   };
 
+  // Xử lý các quick action (đánh dấu hoàn thành, thêm task, v.v.)
   const handleQuickAction = (action) => {
     switch (action) {
       case 'mark_complete':
@@ -102,6 +112,8 @@ const GoalDetail = ({ navigation, route }) => {
     }
     setShowQuickActions(false);
   };
+
+  // Cập nhật trạng thái goal (hoàn thành, đang thực hiện)
   const updateGoalStatus = async (newStatus) => {
     try {
       await apiService.put(`/goals/${goalId}`, { status: newStatus });
@@ -112,7 +124,7 @@ const GoalDetail = ({ navigation, route }) => {
     }
   };
 
-  // Phase expand/collapse
+  // Mở rộng/thu gọn phase để xem tasks
   const handleExpandPhase = async (phase) => {
     if (selectedPhaseId === phase.id) {
       setSelectedPhaseId(null);
@@ -122,7 +134,8 @@ const GoalDetail = ({ navigation, route }) => {
     // Không cần gọi API nữa, tasks đã có sẵn trong phase.tasks
     setPhaseTasksMap(prev => ({ ...prev, [phase.id]: phase.tasks || [] }));
   };
-  // Toggle task complete
+
+  // Đánh dấu hoàn thành/không hoàn thành cho task trong phase
   const handleToggleTaskComplete = async (task, phaseId) => {
     const newStatus = task.status === 'completed' ? 'in_progress' : 'completed';
     setUpdatingTaskIds((prev) => [...prev, task.id]);
@@ -139,7 +152,7 @@ const GoalDetail = ({ navigation, route }) => {
     }
   };
 
-  // Helper
+  // Các hàm helper format ngày, priority, status, tính số ngày còn lại
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -153,9 +166,11 @@ const GoalDetail = ({ navigation, route }) => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Hiển thị loading khi đang tải dữ liệu
   if (isLoading) {
     return <Loading fullScreen text="Loading goal details..." />;
   }
+  // Nếu không tìm thấy goal
   if (!goal) {
     return (
       <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
@@ -166,7 +181,7 @@ const GoalDetail = ({ navigation, route }) => {
   }
   const daysRemaining = getDaysRemaining(goal.deadline);
 
-  // Quick actions
+  // Danh sách quick actions cho menu ⋯
   const quickActions = [
     { id: 'mark_complete', icon: '✅', label: 'Mark Complete', onPress: () => handleQuickAction('mark_complete') },
     { id: 'mark_in_progress', icon: '🔄', label: 'Mark In Progress', onPress: () => handleQuickAction('mark_in_progress') },
@@ -183,28 +198,38 @@ const GoalDetail = ({ navigation, route }) => {
         {/* Header + Quick Actions */}
         <Card style={{ margin: spacing.md, padding: spacing.lg }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Nút quay lại */}
             <Button title="← Back" variant="ghost" onPress={() => navigation.goBack()} />
+            {/* Nút mở menu quick actions */}
             <Button title="⋯" variant="ghost" onPress={() => setShowQuickActions(!showQuickActions)} />
           </View>
+          {/* Menu quick actions */}
           {showQuickActions && (
             <QuickActionsMenu actions={quickActions} />
           )}
         </Card>
-        {/* Goal Info */}
+        {/* Thông tin Goal */}
         <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
           <Text style={textStyles.h3}>{goal.name}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginVertical: spacing.sm }}>
+            {/* Badge priority */}
             <Badge label={formatPriority(goal.priority)} style={{ backgroundColor: priorityColors[goal.priority?.toLowerCase?.() || 'low'] }} />
+            {/* Badge status */}
             <Badge label={formatStatus(goal.status)} style={{ backgroundColor: statusColors[goal.status] }} />
           </View>
+          {/* Mô tả goal */}
           <Text style={[textStyles.body2, { color: colors.text.secondary, marginBottom: spacing.md }]}>{goal.description}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+            {/* Deadline và số ngày còn lại */}
             <Text style={textStyles.body2}>Deadline: {formatDate(goal.deadline)}
               <Text style={{ color: daysRemaining < 0 ? colors.error.main : colors.success.main, fontWeight: 'bold' }}>  {daysRemaining < 0 ? `${Math.abs(daysRemaining)} days overdue` : `${daysRemaining} days remaining`}</Text>
             </Text>
+            {/* Ngày tạo */}
             <Text style={textStyles.body2}>Created: {formatDate(goal.created_at || goal.createdAt)}</Text>
+            {/* Category nếu có */}
             {goal.category && <Text style={textStyles.body2}>Category: {goal.category}</Text>}
           </View>
+          {/* Danh sách tag */}
           {goal.tags && goal.tags.length > 0 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
               {goal.tags.map((tag, idx) => (
@@ -213,7 +238,7 @@ const GoalDetail = ({ navigation, route }) => {
             </View>
           )}
         </Card>
-        {/* Progress Bar */}
+        {/* Progress Bar tổng thể */}
         <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
             <Text style={textStyles.h4}>Overall Progress</Text>
@@ -221,12 +246,14 @@ const GoalDetail = ({ navigation, route }) => {
           </View>
           <ProgressBar progress={progress} variant={goal.status === 'completed' ? 'success' : 'primary'} size="large" showLabel labelPosition="bottom" />
         </Card>
-        {/* Phases List */}
+        {/* Danh sách các Phase */}
         <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
             <Text style={textStyles.h4}>Phases</Text>
+            {/* Nút thêm phase */}
             <Button title="+ Add Phase" size="small" onPress={() => navigation.navigate('CreatePhase', { goalId: goal.id, lastOrderNumber: phases.length })} />
           </View>
+          {/* Hiển thị từng phase */}
           {phases.map(phase => (
             <PhaseCard
               key={phase.id}
@@ -240,12 +267,14 @@ const GoalDetail = ({ navigation, route }) => {
             />
           ))}
         </Card>
-        {/* Tasks Overview */}
+        {/* Tổng quan các Task */}
         <Card style={{ marginHorizontal: spacing.md, marginBottom: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
             <Text style={textStyles.h4}>Tasks Overview</Text>
+            {/* Nút thêm task */}
             <Button title="+ Add Task" size="small" onPress={() => navigation.navigate('CreateTask', { goalId: goal.id })} />
           </View>
+          {/* Thống kê số lượng task theo trạng thái */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: spacing.md }}>
             <View style={{ alignItems: 'center' }}>
               <Text style={textStyles.h3}>{tasks.filter(task => task.status === 'completed').length}</Text>
@@ -260,6 +289,7 @@ const GoalDetail = ({ navigation, route }) => {
               <Text style={textStyles.body3}>Pending</Text>
             </View>
           </View>
+          {/* Hiển thị 5 task đầu tiên */}
           {tasks.slice(0, 5).map(task => (
             <TouchableOpacity key={task.id} onPress={() => navigation.navigate('TaskDetail', { taskId: task.id, taskData: task })}>
               <Card style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, padding: spacing.md }}>
@@ -275,15 +305,17 @@ const GoalDetail = ({ navigation, route }) => {
               </Card>
             </TouchableOpacity>
           ))}
+          {/* Nếu có nhiều hơn 5 task thì hiển thị nút xem tất cả */}
           {tasks.length > 5 && (
             <Button title={`View all ${tasks.length} tasks`} variant="ghost" onPress={() => {}} />
           )}
         </Card>
-        {/* Action Buttons */}
+        {/* Các nút hành động chỉnh sửa/xóa goal */}
         <View style={{ flexDirection: 'row', gap: spacing.md, margin: spacing.md }}>
           <Button title="Edit Goal" onPress={handleEdit} />
           <Button title="Delete Goal" variant="danger" onPress={handleDelete} />
         </View>
+        {/* Khoảng trống cuối trang */}
         <View style={{ height: 50 }} />
       </ScrollView>
     </View>

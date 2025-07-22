@@ -1,3 +1,5 @@
+// CreateTask.tsx - Màn hình tạo task mới cho user
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Alert, TextInput, Switch, TouchableOpacity } from 'react-native';
 import { apiService } from '../../services/api';
@@ -6,25 +8,33 @@ import { Button, Loading } from '../../components/ui';
 import { colors, spacing, textStyles, priorityColors, commonStyles } from '../../styles';
 import { useLoading } from '../../hooks/useLoading';
 
+// Định nghĩa interface cho template mẫu task
 interface Template {
   id: number;
   title: string;
   description: string;
   priority: string;
 }
+
+// Định nghĩa interface cho Goal
 interface Goal {
   id: number;
   name: string;
 }
+
+// Định nghĩa interface cho Phase
 interface Phase {
   id: number;
   title: string;
 }
+
+// Định nghĩa kiểu cho params truyền qua route
 interface RouteParams {
   goalId?: number;
   phaseId?: number;
 }
 
+// Định nghĩa kiểu cho errors của form
 type Errors = {
   title?: string;
   description?: string;
@@ -32,12 +42,14 @@ type Errors = {
   deadline?: string;
 };
 
+// Danh sách mức độ ưu tiên
 const priorities = [
   { value: 'Low', label: 'Low', color: priorityColors.low, icon: '🟢' },
   { value: 'Medium', label: 'Medium', color: priorityColors.medium, icon: '🟡' },
   { value: 'High', label: 'High', color: priorityColors.high, icon: '🔴' },
 ];
 
+// Danh sách template mẫu cho task
 const templates = [
   {
     id: 1,
@@ -59,9 +71,13 @@ const templates = [
   },
 ];
 
+// Component chính để tạo task mới
 const CreateTask = ({ navigation, route }: { navigation: any; route: { params: RouteParams } }) => {
+  // Lấy goalId và phaseId từ params nếu có
   const { goalId: initialGoalId = null, phaseId: initialPhaseId = null } = route.params || {};
   const { isLoading, withLoading } = useLoading(false);
+
+  // State cho các trường của form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [goalId, setGoalId] = useState(initialGoalId);
@@ -76,6 +92,8 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
   const [goals, setGoals] = useState<Goal[]>([]);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Các preset cho recurring task
   const recurringPresets = [
     { label: 'None', value: '' },
     { label: 'Daily', value: 'daily' },
@@ -85,18 +103,22 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
   ];
   const [recurringPreset, setRecurringPreset] = useState('');
 
+  // Lấy danh sách goals khi mount
   useEffect(() => {
     fetchGoals();
   }, []);
 
+  // Lấy danh sách phases khi goalId thay đổi
   useEffect(() => {
     if (goalId) fetchPhases(goalId);
   }, [goalId]);
 
+  // Validate form mỗi khi các trường thay đổi
   useEffect(() => {
     validateForm();
   }, [title, description, goalId, phaseId, deadline, priority]);
 
+  // Hàm lấy danh sách goals từ API
   const fetchGoals = async () => {
     try {
       const response = await apiService.get('/goals');
@@ -106,6 +128,7 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
     }
   };
 
+  // Hàm lấy danh sách phases theo goalId từ API
   const fetchPhases = async (goalId) => {
     try {
       const response = await apiService.get(`/goals/${goalId}/phases`);
@@ -115,6 +138,7 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
     }
   };
 
+  // Hàm kiểm tra hợp lệ của form
   const validateForm = () => {
     const newErrors: Errors = {};
     if (!title.trim()) {
@@ -133,6 +157,7 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
     setIsFormValid(Object.keys(newErrors).length === 0);
   };
 
+  // Khi chọn template mẫu
   const handleTemplateSelect = (template: Template) => {
     setTitle(template.title);
     setDescription(template.description);
@@ -140,6 +165,7 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
     setSelectedTemplate(template);
   };
 
+  // Hàm xử lý khi nhấn nút tạo task
   const handleCreate = async () => {
     if (!isFormValid) {
       Alert.alert('Validation Error', 'Please fix the errors before creating.');
@@ -167,12 +193,15 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
     });
   };
 
+  // Hàm xử lý khi nhấn cancel
   const handleCancel = () => navigation.goBack();
 
+  // Nếu đang loading thì show loading
   if (isLoading) {
     return <Loading fullScreen text="Creating task..." />;
   }
 
+  // Render UI
   return (
     <KeyboardAvoidingView
       style={commonStyles.container}
@@ -351,6 +380,7 @@ const CreateTask = ({ navigation, route }: { navigation: any; route: { params: R
             </>
           )}
         </View>
+        {/* Khoảng trống cuối để tránh che nút khi bàn phím mở */}
         <View style={{ height: 50 }} />
       </ScrollView>
     </KeyboardAvoidingView>

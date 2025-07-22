@@ -1,23 +1,26 @@
+// Input.tsx - Input component với nhiều biến thể (outlined, filled), kích thước, trạng thái focus/error, hỗ trợ icon trái/phải
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native';
 import { colors, textStyles, spacing, borderRadius, borderWidth } from '../../../styles';
 
+// Định nghĩa các props cho Input
 export interface InputProps extends Omit<TextInputProps, 'style'> {
-  label?: string;
-  error?: string;
-  helperText?: string;
-  variant?: 'outlined' | 'filled';
-  size?: 'small' | 'medium' | 'large';
-  fullWidth?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  containerStyle?: any;
-  inputStyle?: any;
-  labelStyle?: any;
-  errorStyle?: any;
-  helperStyle?: any;
+  label?: string; // Nhãn hiển thị phía trên input
+  error?: string; // Thông báo lỗi
+  helperText?: string; // Text phụ trợ dưới input
+  variant?: 'outlined' | 'filled'; // Kiểu input: viền hoặc nền đặc
+  size?: 'small' | 'medium' | 'large'; // Kích thước input
+  fullWidth?: boolean; // Input chiếm toàn bộ chiều ngang
+  leftIcon?: React.ReactNode; // Icon bên trái
+  rightIcon?: React.ReactNode; // Icon bên phải
+  containerStyle?: any; // Custom style cho container
+  inputStyle?: any; // Custom style cho TextInput
+  labelStyle?: any; // Custom style cho label
+  errorStyle?: any; // Custom style cho error text
+  helperStyle?: any; // Custom style cho helper text
 }
 
+// Component Input
 const Input: React.FC<InputProps> = ({
   label,
   error,
@@ -36,18 +39,22 @@ const Input: React.FC<InputProps> = ({
   onBlur,
   ...textInputProps
 }) => {
+  // State kiểm soát trạng thái focus
   const [isFocused, setIsFocused] = useState(false);
 
+  // Xử lý khi focus vào input
   const handleFocus = (e: any) => {
     setIsFocused(true);
     onFocus?.(e);
   };
 
+  // Xử lý khi blur khỏi input
   const handleBlur = (e: any) => {
     setIsFocused(false);
     onBlur?.(e);
   };
 
+  // Style cho container của input (viền, nền, trạng thái, v.v.)
   const inputContainerStyle = [
     styles.inputContainer,
     styles[variant],
@@ -58,6 +65,7 @@ const Input: React.FC<InputProps> = ({
     containerStyle,
   ];
 
+  // Style cho chính TextInput
   const inputStyleArray = [
     styles.input,
     styles[`${variant}Input`],
@@ -67,19 +75,23 @@ const Input: React.FC<InputProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Label phía trên input */}
       {label && (
         <Text style={[styles.label, labelStyle]}>
           {label}
         </Text>
       )}
       
+      {/* Khối input + icon */}
       <View style={inputContainerStyle}>
+        {/* Icon bên trái nếu có */}
         {leftIcon && (
           <View style={styles.leftIcon}>
             {leftIcon}
           </View>
         )}
         
+        {/* TextInput chính */}
         <TextInput
           style={inputStyleArray}
           onFocus={handleFocus}
@@ -88,6 +100,7 @@ const Input: React.FC<InputProps> = ({
           {...textInputProps}
         />
         
+        {/* Icon bên phải nếu có */}
         {rightIcon && (
           <View style={styles.rightIcon}>
             {rightIcon}
@@ -95,6 +108,7 @@ const Input: React.FC<InputProps> = ({
         )}
       </View>
       
+      {/* Hiển thị error hoặc helperText */}
       {(error || helperText) && (
         <Text style={[
           styles.helperText,
@@ -109,6 +123,7 @@ const Input: React.FC<InputProps> = ({
   );
 };
 
+// StyleSheet cho Input
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
@@ -128,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   
-  // Variants
+  // Biến thể hiển thị
   outlined: {
     backgroundColor: colors.background.primary,
     borderColor: colors.border.medium,
@@ -138,7 +153,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   
-  // Sizes
+  // Kích thước
   small: {
     minHeight: 36,
     paddingHorizontal: spacing.sm,
@@ -152,7 +167,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   
-  // States
+  // Trạng thái
   focused: {
     borderColor: colors.primary.main,
     borderWidth: borderWidth.medium,
@@ -165,7 +180,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   
-  // Input styles
+  // Style cho TextInput
   input: {
     flex: 1,
     fontSize: 16,
@@ -189,7 +204,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   
-  // Icons
+  // Icon trái/phải
   leftIcon: {
     marginRight: spacing.sm,
   },
@@ -197,7 +212,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   
-  // Helper text
+  // Text phụ trợ/error
   helperText: {
     ...textStyles.caption,
     color: colors.text.secondary,

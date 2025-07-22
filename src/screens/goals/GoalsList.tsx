@@ -15,33 +15,43 @@ import { Button, Loading } from '../../components/ui';
 import { useApi, usePagination } from '../../hooks';
 import { colors, textStyles, spacing, commonStyles } from '../../styles';
 
+// Màn hình danh sách Goals
 const GoalsList = ({ navigation }) => {
   const { user } = useAuth();
   const { execute, isLoading } = useApi();
   const { currentPage, hasNextPage, setTotalItems, nextPage, reset: resetPagination } = usePagination();
   
+  // State lưu danh sách goals lấy từ API hoặc mock
   const [goals, setGoals] = useState<Goal[]>([]);
+  // State lưu danh sách goals sau khi filter/sort
   const [filteredGoals, setFilteredGoals] = useState<Goal[]>([]);
+  // State lưu các filter hiện tại
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
     statusFilter: 'all',
     priorityFilter: 'all',
     sortBy: 'deadline',
   });
+  // State chế độ hiển thị: grid hoặc list
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  // State lưu các goal được chọn (cho bulk actions)
   const [selectedGoals, setSelectedGoals] = useState<number[]>([]);
+  // State bật/tắt chế độ chọn nhiều
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   const ITEMS_PER_PAGE = 10;
 
+  // Effect: load goals khi currentPage thay đổi
   useEffect(() => {
     loadGoals();
   }, [currentPage]);
 
+  // Effect: filter & sort lại goals khi goals hoặc filters thay đổi
   useEffect(() => {
     filterAndSortGoals();
   }, [goals, filters]);
 
+  // Hàm load goals từ API (hoặc mock nếu lỗi)
   const loadGoals = async () => {
     const result = await execute(async () => {
       const response = await apiService.get(`/goals?page=${currentPage}&limit=${ITEMS_PER_PAGE}`);
@@ -57,11 +67,12 @@ const GoalsList = ({ navigation }) => {
     });
 
     if (!result.success) {
-      // Use mock data for development
+      // Dùng mock data khi dev hoặc lỗi API
       setMockData();
     }
   };
 
+  // Hàm set mock data cho goals (dùng khi dev hoặc lỗi API)
   const setMockData = () => {
     const mockGoals: Goal[] = [
       { id: 1, title: 'Learn React Native', description: 'Master React Native development', status: 'in_progress', priority: 'High', progress: 75, deadline: '2024-01-15', createdAt: '2024-01-01' },
@@ -74,10 +85,11 @@ const GoalsList = ({ navigation }) => {
     setTotalItems(mockGoals.length);
   };
 
+  // Hàm filter và sort goals dựa trên filters hiện tại
   const filterAndSortGoals = () => {
     let filtered = [...goals];
 
-    // Search filter
+    // Lọc theo search query
     if (filters.searchQuery) {
       filtered = filtered.filter(goal => 
         goal.title.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
@@ -85,17 +97,17 @@ const GoalsList = ({ navigation }) => {
       );
     }
 
-    // Status filter
+    // Lọc theo status
     if (filters.statusFilter !== 'all') {
       filtered = filtered.filter(goal => goal.status === filters.statusFilter);
     }
 
-    // Priority filter
+    // Lọc theo priority
     if (filters.priorityFilter !== 'all') {
       filtered = filtered.filter(goal => goal.priority === filters.priorityFilter);
     }
 
-    // Sort
+    // Sắp xếp theo sortBy
     filtered.sort((a, b) => {
       switch (filters.sortBy) {
         case 'deadline':
@@ -115,10 +127,12 @@ const GoalsList = ({ navigation }) => {
     setFilteredGoals(filtered);
   };
 
+  // Xử lý khi nhấn nút tạo goal mới
   const handleCreateGoal = () => {
     navigation.navigate('CreateGoal');
   };
 
+  // Xử lý khi nhấn vào 1 goal (nếu đang chọn nhiều thì toggle chọn, không thì vào detail)
   const handleGoalPress = (goal: Goal) => {
     if (isSelectionMode) {
       toggleGoalSelection(goal.id);
@@ -127,6 +141,7 @@ const GoalsList = ({ navigation }) => {
     }
   };
 
+  // Xử lý khi nhấn giữ 1 goal (bật chế độ chọn nhiều)
   const handleLongPress = (goal: Goal) => {
     if (!isSelectionMode) {
       setIsSelectionMode(true);
@@ -134,6 +149,7 @@ const GoalsList = ({ navigation }) => {
     }
   };
 
+  // Toggle chọn/bỏ chọn 1 goal trong chế độ chọn nhiều
   const toggleGoalSelection = (goalId: number) => {
     setSelectedGoals(prev => 
       prev.includes(goalId) 
@@ -142,6 +158,7 @@ const GoalsList = ({ navigation }) => {
     );
   };
 
+  // Xử lý khi nhấn bulk action (complete/delete)
   const handleBulkAction = (action: string) => {
     if (selectedGoals.length === 0) {
       Alert.alert('No Goals Selected', 'Please select goals to perform bulk actions.');
@@ -158,13 +175,14 @@ const GoalsList = ({ navigation }) => {
     );
   };
 
+  // Hàm thực hiện bulk action (chưa gọi API thật)
   const performBulkAction = async (action: string) => {
     try {
-      // TODO: Implement bulk actions API
+      // TODO: Gọi API thực hiện bulk action
       console.log(`Performing ${action} on goals:`, selectedGoals);
       Alert.alert('Success', `Bulk ${action} completed successfully.`);
       
-      // Refresh goals
+      // Sau khi xong thì reset chọn và reload goals
       resetPagination();
       setSelectedGoals([]);
       setIsSelectionMode(false);
@@ -175,9 +193,10 @@ const GoalsList = ({ navigation }) => {
     }
   };
 
+  // Xử lý cập nhật nhanh trạng thái goal (quick action trên GoalCard)
   const handleQuickStatusUpdate = async (goalId: number, newStatus: string) => {
     try {
-      // TODO: Implement quick status update API
+      // TODO: Gọi API cập nhật trạng thái goal
       console.log(`Updating goal ${goalId} status to ${newStatus}`);
       
       setGoals(prev => 
@@ -193,12 +212,14 @@ const GoalsList = ({ navigation }) => {
     }
   };
 
+  // Hàm load thêm goals khi scroll tới cuối danh sách
   const loadMoreGoals = () => {
     if (hasNextPage && !isLoading) {
       nextPage();
     }
   };
 
+  // Render 1 item goal (GoalCard)
   const renderGoalItem = ({ item: goal }: { item: Goal }) => {
     const isSelected = selectedGoals.includes(goal.id);
     
@@ -214,6 +235,7 @@ const GoalsList = ({ navigation }) => {
     );
   };
 
+  // Render header của màn hình (tiêu đề + nút chuyển view + nút tạo goal)
   const renderHeader = () => (
     <View style={styles.header}>
       <Text style={styles.title}>Goals</Text>
@@ -234,6 +256,7 @@ const GoalsList = ({ navigation }) => {
     </View>
   );
 
+  // Render thanh bulk actions khi đang chọn nhiều goals
   const renderBulkActions = () => (
     isSelectionMode && (
       <View style={styles.bulkActions}>
@@ -269,14 +292,17 @@ const GoalsList = ({ navigation }) => {
     )
   );
 
+  // Nếu đang loading lần đầu (chưa có goals) thì show loading full screen
   if (isLoading && goals.length === 0) {
     return <Loading text="Loading goals..." fullScreen />;
   }
 
+  // Render chính của màn hình GoalsList
   return (
     <View style={commonStyles.container}>
       {renderHeader()}
       
+      {/* Bộ lọc goals */}
       <GoalFilters
         filters={filters}
         onFiltersChange={setFilters}
@@ -284,6 +310,7 @@ const GoalsList = ({ navigation }) => {
       
       {renderBulkActions()}
       
+      {/* Danh sách goals dạng FlatList */}
       <FlatList
         data={filteredGoals}
         renderItem={renderGoalItem}
@@ -313,6 +340,7 @@ const GoalsList = ({ navigation }) => {
   );
 };
 
+// StyleSheet cho màn hình GoalsList
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',

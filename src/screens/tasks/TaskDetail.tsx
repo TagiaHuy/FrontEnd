@@ -1,3 +1,5 @@
+// TaskDetail.tsx - Hiển thị chi tiết một task, cho phép cập nhật trạng thái, thêm comment, và xem thông tin liên quan
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity } from 'react-native';
 import { apiService } from '../../services/api';
@@ -5,6 +7,7 @@ import { Button, Loading } from '../../components/ui';
 import { colors, spacing, textStyles, commonStyles } from '../../styles';
 import { useLoading } from '../../hooks/useLoading';
 
+// Các trạng thái có thể của task
 const statusOptions = [
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
@@ -13,15 +16,24 @@ const statusOptions = [
 ];
 
 const TaskDetail = ({ navigation, route }) => {
+  // Lấy taskId và dữ liệu task (nếu có sẵn) từ params
   const { taskId, taskData } = route.params;
+  // Hook loading, nếu chưa có taskData thì sẽ loading
   const { isLoading, withLoading } = useLoading(!taskData);
+  // State lưu thông tin task
   const [task, setTask] = useState(taskData || null);
+  // State lưu trạng thái hiện tại của task
   const [status, setStatus] = useState(taskData ? taskData.status : '');
+  // State lưu danh sách comment
   const [comments, setComments] = useState([]);
+  // State cho comment mới
   const [newComment, setNewComment] = useState('');
+  // State cho các task liên quan (placeholder)
   const [relatedTasks, setRelatedTasks] = useState([]);
+  // State loading khi cập nhật trạng thái
   const [isSavingStatus, setIsSavingStatus] = useState(false);
 
+  // Khi taskId thay đổi, load lại task nếu chưa có sẵn
   useEffect(() => {
     if (!taskData) {
       withLoading(loadTask);
@@ -31,6 +43,7 @@ const TaskDetail = ({ navigation, route }) => {
     }
   }, [taskId]);
 
+  // Hàm load chi tiết task từ API
   const loadTask = async () => {
     try {
       const response = await apiService.get(`/tasks/${taskId}`);
@@ -43,6 +56,7 @@ const TaskDetail = ({ navigation, route }) => {
     }
   };
 
+  // Hàm cập nhật trạng thái task
   const handleStatusUpdate = async (newStatus) => {
     try {
       setIsSavingStatus(true);
@@ -57,6 +71,7 @@ const TaskDetail = ({ navigation, route }) => {
     }
   };
 
+  // Hàm thêm comment mới (chỉ local, chưa gọi API)
   const handleAddComment = () => {
     if (!newComment.trim()) return;
     setComments((prev) => [
@@ -66,10 +81,12 @@ const TaskDetail = ({ navigation, route }) => {
     setNewComment('');
   };
 
+  // Hiển thị loading khi đang tải task
   if (isLoading) {
     return <Loading fullScreen text="Loading task..." />;
   }
 
+  // Nếu không tìm thấy task
   if (!task) {
     return (
       <View style={[commonStyles.container, { justifyContent: 'center', alignItems: 'center' }]}> 
@@ -79,20 +96,31 @@ const TaskDetail = ({ navigation, route }) => {
     );
   }
 
+  // Render UI chi tiết task
   return (
     <ScrollView style={commonStyles.container}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.lg, backgroundColor: colors.background.primary, borderBottomWidth: 1, borderBottomColor: colors.neutral.gray100 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: spacing.lg,
+          backgroundColor: colors.background.primary,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.neutral.gray100
+        }}
+      >
         <Button title="← Back" variant="ghost" onPress={() => navigation.goBack()} />
         <Text style={[textStyles.h4, { marginLeft: spacing.md }]}>Task Detail</Text>
       </View>
-      {/* Task Information */}
+      {/* Thông tin task */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.h5}>{task.title}</Text>
         <Text style={textStyles.label}>Description:</Text>
         <Text style={textStyles.body2}>{task.description}</Text>
         <Text style={textStyles.label}>Goal:</Text>
         <Text style={textStyles.body2}>{task.goal_title || task.goal?.name || '-'}</Text>
+        {/* Hiển thị phase nếu có */}
         {task.phase_title || task.phase?.title ? (
           <>
             <Text style={textStyles.label}>Phase:</Text>
@@ -104,7 +132,7 @@ const TaskDetail = ({ navigation, route }) => {
         <Text style={textStyles.label}>Priority:</Text>
         <Text style={textStyles.body2}>{task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : '-'}</Text>
       </View>
-      {/* Status Update */}
+      {/* Cập nhật trạng thái */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Status:</Text>
         <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm }}>
@@ -120,7 +148,7 @@ const TaskDetail = ({ navigation, route }) => {
           ))}
         </View>
       </View>
-      {/* Comments Section */}
+      {/* Phần bình luận (comment) */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Comments</Text>
         {comments.length === 0 && <Text style={textStyles.body2}>No comments yet.</Text>}
@@ -131,9 +159,20 @@ const TaskDetail = ({ navigation, route }) => {
             <Text style={{ fontSize: 12, color: colors.text.tertiary, marginTop: 2 }}>{new Date(comment.created_at).toLocaleString()}</Text>
           </View>
         ))}
+        {/* Ô nhập comment mới */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md }}>
           <TextInput
-            style={{ flex: 1, backgroundColor: colors.background.secondary, borderRadius: 8, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 14, borderWidth: 1, borderColor: colors.neutral.gray100, marginRight: spacing.sm }}
+            style={{
+              flex: 1,
+              backgroundColor: colors.background.secondary,
+              borderRadius: 8,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
+              fontSize: 14,
+              borderWidth: 1,
+              borderColor: colors.neutral.gray100,
+              marginRight: spacing.sm
+            }}
             placeholder="Add a comment..."
             value={newComment}
             onChangeText={setNewComment}
@@ -141,12 +180,12 @@ const TaskDetail = ({ navigation, route }) => {
           <Button title="Send" onPress={handleAddComment} style={{ minWidth: 70 }} />
         </View>
       </View>
-      {/* Time Tracking Placeholder */}
+      {/* Placeholder cho time tracking */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Time Tracking</Text>
         <Text style={textStyles.body2}>Time tracking will be displayed here.</Text>
       </View>
-      {/* Related Tasks Placeholder */}
+      {/* Placeholder cho các task liên quan */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Related Tasks</Text>
         {relatedTasks.length === 0 ? (
@@ -157,16 +196,17 @@ const TaskDetail = ({ navigation, route }) => {
           ))
         )}
       </View>
-      {/* File Attachments Placeholder */}
+      {/* Placeholder cho file đính kèm */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Attachments</Text>
         <Text style={textStyles.body2}>File attachments will be displayed here.</Text>
       </View>
-      {/* Dependencies Placeholder */}
+      {/* Placeholder cho dependencies */}
       <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg, borderRadius: 8 }}>
         <Text style={textStyles.label}>Dependencies</Text>
         <Text style={textStyles.body2}>Task dependencies will be displayed here.</Text>
       </View>
+      {/* Khoảng trống cuối để tránh che nút khi bàn phím mở */}
       <View style={{ height: 50 }} />
     </ScrollView>
   );

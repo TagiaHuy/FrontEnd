@@ -1,8 +1,0 @@
-login
-register
-request-reset
-goal detail screen
-
-
-chua lam
-get goal roadmap

@@ -7,6 +7,7 @@ import { Button, Loading } from '../../components/ui';
 import { colors, spacing, textStyles, priorityColors, commonStyles } from '../../styles';
 import { useLoading } from '../../hooks/useLoading';
 
+// Kiểu dữ liệu cho lỗi của form
 type Errors = {
   goalName?: string;
   description?: string;
@@ -17,25 +18,30 @@ const CreateGoal = ({ navigation }) => {
   const { user } = useAuth();
   const { isLoading, withLoading } = useLoading(false);
   const [isSaving, setIsSaving] = useState(false);
-  // Form fields
+
+  // Các trường của form
   const [goalName, setGoalName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  // Validation states
+
+  // Trạng thái kiểm tra hợp lệ và lỗi
   const [errors, setErrors] = useState<Errors>({});
   const [isFormValid, setIsFormValid] = useState(false);
-  // Auto-save states
+
+  // Trạng thái lưu nháp tự động
   const [lastSaved, setLastSaved] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Danh sách mức độ ưu tiên
   const priorities = [
     { value: 'Low', label: 'Low', color: priorityColors.low, icon: '🟢' },
     { value: 'Medium', label: 'Medium', color: priorityColors.medium, icon: '🟡' },
     { value: 'High', label: 'High', color: priorityColors.high, icon: '🔴' },
   ];
 
+  // Danh sách template mẫu cho mục tiêu
   const templates = [
     {
       id: 1,
@@ -71,6 +77,7 @@ const CreateGoal = ({ navigation }) => {
     }
   ];
 
+  // Effect để load bản nháp khi mở màn hình và cảnh báo khi rời đi nếu có thay đổi chưa lưu
   useEffect(() => {
     loadDraft();
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
@@ -90,6 +97,7 @@ const CreateGoal = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, hasUnsavedChanges]);
 
+  // Effect để validate form và tự động lưu nháp khi có thay đổi
   useEffect(() => {
     validateForm();
     if (hasUnsavedChanges) {
@@ -97,6 +105,7 @@ const CreateGoal = ({ navigation }) => {
     }
   }, [goalName, description, deadline, priority]);
 
+  // Hàm load bản nháp từ AsyncStorage
   const loadDraft = async () => {
     try {
       const draft = await AsyncStorage.getItem('goal_draft');
@@ -111,6 +120,7 @@ const CreateGoal = ({ navigation }) => {
     } catch (error) {}
   };
 
+  // Hàm lưu bản nháp vào AsyncStorage
   const saveDraft = async () => {
     try {
       const draftData = {
@@ -126,6 +136,7 @@ const CreateGoal = ({ navigation }) => {
     } catch (error) {}
   };
 
+  // Hàm tự động lưu bản nháp sau 2 giây nếu có thay đổi
   const autoSaveDraft = () => {
     const timeoutId = setTimeout(() => {
       if (hasUnsavedChanges) {
@@ -135,6 +146,7 @@ const CreateGoal = ({ navigation }) => {
     return () => clearTimeout(timeoutId);
   };
 
+  // Hàm xóa bản nháp khỏi AsyncStorage
   const clearDraft = async () => {
     try {
       await AsyncStorage.removeItem('goal_draft');
@@ -143,6 +155,7 @@ const CreateGoal = ({ navigation }) => {
     } catch (error) {}
   };
 
+  // Hàm kiểm tra hợp lệ của form
   const validateForm = () => {
     const newErrors: Errors = {};
     if (!goalName.trim()) {
@@ -169,6 +182,7 @@ const CreateGoal = ({ navigation }) => {
     setIsFormValid(Object.keys(newErrors).length === 0);
   };
 
+  // Hàm chọn template mẫu cho mục tiêu
   const handleTemplateSelect = (template) => {
     Alert.alert(
       'Use Template',
@@ -181,7 +195,7 @@ const CreateGoal = ({ navigation }) => {
             setGoalName(template.title);
             setDescription(template.description);
             setPriority(template.priority);
-            // Set deadline based on template
+            // Thiết lập deadline dựa trên template
             const today = new Date();
             let deadlineDate = new Date();
             switch (template.deadline) {
@@ -212,6 +226,7 @@ const CreateGoal = ({ navigation }) => {
     );
   };
 
+  // Hàm tạo mục tiêu mới
   const handleCreateGoal = async () => {
     if (!isFormValid) {
       Alert.alert('Validation Error', 'Please fix the errors before creating the goal.');
@@ -246,6 +261,7 @@ const CreateGoal = ({ navigation }) => {
     });
   };
 
+  // Hàm xử lý khi nhấn Cancel
   const handleCancel = () => {
     if (hasUnsavedChanges) {
       Alert.alert(
@@ -262,10 +278,12 @@ const CreateGoal = ({ navigation }) => {
     }
   };
 
+  // Hiển thị loading khi đang tạo mục tiêu
   if (isLoading) {
     return <Loading fullScreen text="Creating goal..." />;
   }
 
+  // Giao diện chính của màn hình tạo mục tiêu
   return (
     <KeyboardAvoidingView 
       style={commonStyles.container}
@@ -283,7 +301,7 @@ const CreateGoal = ({ navigation }) => {
             loading={isSaving}
           />
         </View>
-        {/* Auto-save indicator */}
+        {/* Hiển thị thông báo đã lưu nháp gần nhất */}
         {lastSaved && (
           <View style={{ backgroundColor: colors.info.light, padding: spacing.sm, alignItems: 'center' }}>
             <Text style={{ fontSize: 12, color: colors.info.main }}>
@@ -291,7 +309,7 @@ const CreateGoal = ({ navigation }) => {
             </Text>
           </View>
         )}
-        {/* Template Selection */}
+        {/* Chọn template mẫu */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.h5}>Choose Template (Optional)</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
@@ -306,7 +324,7 @@ const CreateGoal = ({ navigation }) => {
             ))}
           </ScrollView>
         </View>
-        {/* Goal Name */}
+        {/* Nhập tên mục tiêu */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.label}>Goal Name *</Text>
           <View style={{ borderWidth: 1, borderColor: errors.goalName ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
@@ -323,7 +341,7 @@ const CreateGoal = ({ navigation }) => {
           </View>
           {errors.goalName && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.goalName}</Text>}
         </View>
-        {/* Description */}
+        {/* Nhập mô tả mục tiêu */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.label}>Description *</Text>
           <View style={{ borderWidth: 1, borderColor: errors.description ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
@@ -344,7 +362,7 @@ const CreateGoal = ({ navigation }) => {
           <Text style={{ color: colors.text.secondary, fontSize: 12, textAlign: 'right', marginTop: 5 }}>{description.length}/500 characters</Text>
           {errors.description && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.description}</Text>}
         </View>
-        {/* Deadline */}
+        {/* Nhập deadline */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.label}>Deadline *</Text>
           <View style={{ borderWidth: 1, borderColor: errors.deadline ? colors.error.main : colors.neutral.gray100, borderRadius: 8, marginTop: spacing.xs }}>
@@ -366,7 +384,7 @@ const CreateGoal = ({ navigation }) => {
           <Text style={{ color: colors.text.secondary, fontSize: 12, marginTop: 5 }}>Format: YYYY-MM-DD (e.g., 2024-12-31)</Text>
           {errors.deadline && <Text style={{ color: colors.error.main, fontSize: 12, marginTop: 5 }}>{errors.deadline}</Text>}
         </View>
-        {/* Priority */}
+        {/* Chọn mức độ ưu tiên */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.label}>Priority *</Text>
           <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm }}>
@@ -384,7 +402,7 @@ const CreateGoal = ({ navigation }) => {
             ))}
           </View>
         </View>
-        {/* Form Summary */}
+        {/* Hiển thị tóm tắt thông tin mục tiêu */}
         <View style={{ backgroundColor: colors.background.primary, marginTop: spacing.md, padding: spacing.lg }}>
           <Text style={textStyles.h5}>Goal Summary</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm }}>
@@ -400,6 +418,7 @@ const CreateGoal = ({ navigation }) => {
             <Text style={textStyles.body2}>{deadline || 'Not set'}</Text>
           </View>
         </View>
+        {/* Khoảng trống cuối trang */}
         <View style={{ height: 100 }} />
       </ScrollView>
     </KeyboardAvoidingView>

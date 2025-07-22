@@ -1,8 +1,9 @@
+// index.js - Entry point của ứng dụng, đăng ký component gốc với Expo
 import { registerRootComponent } from 'expo';
 
 import App from './App';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+// Hàm này sẽ đăng ký App là component gốc của ứng dụng với Expo hoặc React Native
+// registerRootComponent gọi AppRegistry.registerComponent('main', () => App);
+// Đảm bảo môi trường được thiết lập đúng khi chạy trên Expo Go hoặc build native
 registerRootComponent(App);

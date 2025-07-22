@@ -1,3 +1,5 @@
+// ForgotPassword.tsx - Màn hình quên mật khẩu, gửi link reset qua email
+
 import React, { useState } from 'react';
 import { 
   View, 
@@ -10,22 +12,30 @@ import {
 import { API_BASE_URL } from '@env';
 import { textStyles, colors, spacing } from '../../styles';
 
+// Component chính cho màn hình Forgot Password
 const ForgotPassword = ({ navigation }) => {
+  // State lưu email người dùng nhập
   const [email, setEmail] = useState('');
+  // State kiểm soát trạng thái loading khi gửi request
   const [isLoading, setIsLoading] = useState(false);
+  // State hiển thị thông báo thành công
   const [isSuccess, setIsSuccess] = useState(false);
 
+  // Hàm kiểm tra định dạng email hợp lệ
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
+  // Xử lý gửi yêu cầu reset password
   const handleSendResetLink = async () => {
+    // Kiểm tra email rỗng
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
+    // Kiểm tra định dạng email
     if (!validateEmail(email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
@@ -33,6 +43,7 @@ const ForgotPassword = ({ navigation }) => {
 
     setIsLoading(true);
     try {
+      // Gửi request POST tới API reset password
       console.log('Making reset password request to:', `${API_BASE_URL}/auth/request-reset`);
       
       const response = await fetch(`${API_BASE_URL}/auth/request-reset`, {
@@ -50,7 +61,7 @@ const ForgotPassword = ({ navigation }) => {
       console.log('Reset password response:', data);
 
       if (response.ok) {
-        // Success - show success message
+        // Thành công - hiển thị thông báo và chuyển về màn hình đăng nhập
         setIsSuccess(true);
         Alert.alert(
           'Reset Link Sent!', 
@@ -59,7 +70,7 @@ const ForgotPassword = ({ navigation }) => {
             {
               text: 'OK',
               onPress: () => {
-                // Optionally navigate back to login
+                // Quay lại màn hình đăng nhập
                 navigation.navigate('Login');
               }
             }
@@ -67,10 +78,11 @@ const ForgotPassword = ({ navigation }) => {
         );
         console.log('Reset link sent successfully');
       } else {
-        // Error
+        // Lỗi từ server
         Alert.alert('Error', data.message || 'Failed to send reset link. Please try again.');
       }
     } catch (error) {
+      // Lỗi mạng hoặc exception
       console.error('Reset password error:', error);
       Alert.alert('Error', 'Network error. Please check your connection and try again.');
     } finally {
@@ -78,6 +90,7 @@ const ForgotPassword = ({ navigation }) => {
     }
   };
 
+  // Xử lý quay lại màn hình đăng nhập
   const handleBackToLogin = () => {
     navigation.navigate('Login');
   };
@@ -85,7 +98,9 @@ const ForgotPassword = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.formContainer}>
+        {/* Tiêu đề màn hình */}
         <Text style={styles.title}>Forgot Password</Text>
+        {/* Mô tả hướng dẫn */}
         <Text style={styles.subtitle}>
           Enter your email address and we'll send you a link to reset your password.
         </Text>
@@ -105,7 +120,7 @@ const ForgotPassword = ({ navigation }) => {
           />
         </View>
 
-        {/* Send Reset Link Button */}
+        {/* Nút gửi link reset */}
         <TouchableOpacity 
           style={[styles.resetButton, isLoading && styles.disabledButton]} 
           onPress={handleSendResetLink}
@@ -116,7 +131,7 @@ const ForgotPassword = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* Success Message */}
+        {/* Thông báo thành công */}
         {isSuccess && (
           <View style={styles.successContainer}>
             <Text style={styles.successText}>
@@ -125,7 +140,7 @@ const ForgotPassword = ({ navigation }) => {
           </View>
         )}
 
-        {/* Back to Login Link */}
+        {/* Link quay lại đăng nhập */}
         <TouchableOpacity style={styles.backLink} onPress={handleBackToLogin}>
           <Text style={styles.backLinkText}>← Back to Login</Text>
         </TouchableOpacity>
@@ -134,6 +149,7 @@ const ForgotPassword = ({ navigation }) => {
   );
 };
 
+// StyleSheet cho ForgotPassword
 const styles = StyleSheet.create({
   container: {
     flex: 1,
