@@ -1,3 +1,17 @@
+/*
+ * QuickActions - Hiển thị các hành động nhanh dạng lưới
+ *
+ * Chức năng:
+ *   - Hiển thị các action (thêm, xoá, v.v.) dạng card
+ *   - Mỗi action có icon, tiêu đề, bấm vào gọi hàm tương ứng
+ *
+ * Props:
+ *   - actions: Mảng các action (id, title, icon, onPress)
+ *   - style: Style tuỳ chỉnh
+ *
+ * Sử dụng:
+ *   - Render các action dạng card, bấm gọi onPress
+ */
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Card } from '../../ui';

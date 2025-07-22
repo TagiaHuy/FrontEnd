@@ -1,3 +1,21 @@
+/*
+ * RegisterForm - Form đăng ký tài khoản mới
+ *
+ * Chức năng:
+ *   - Cho phép người dùng nhập thông tin để đăng ký tài khoản
+ *   - Kiểm tra xác nhận mật khẩu, đồng ý điều khoản
+ *   - Đánh giá độ mạnh mật khẩu
+ *
+ * Props:
+ *   - onSubmit: Hàm xử lý khi submit form đăng ký
+ *   - onLogin: Chuyển sang trang đăng nhập
+ *   - loading: Trạng thái loading khi đăng ký
+ *
+ * Sử dụng:
+ *   - Quản lý state form bằng useForm
+ *   - Validate các trường, kiểm tra đồng ý điều khoản
+ *   - Gọi onSubmit khi hợp lệ
+ */
 import React from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { Button, Input } from '../../ui';
@@ -150,7 +168,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         title={loading ? 'Creating Account...' : 'Create Account'}
         onPress={handleSubmit}
         loading={loading}
-        // disabled={!form.isValid || !form.values.acceptTerms || loading}
         fullWidth
         style={styles.registerButton}
       />

@@ -1,3 +1,19 @@
+/*
+ * GoalCard - Thẻ hiển thị thông tin một goal (mục tiêu)
+ *
+ * Chức năng:
+ *   - Hiển thị tiêu đề, mô tả, trạng thái, độ ưu tiên, tiến độ, deadline
+ *   - Hỗ trợ chọn nhiều goal, tick chọn, gọi action nhanh
+ *
+ * Props:
+ *   - goal: Dữ liệu goal
+ *   - onPress, onLongPress: Hàm xử lý khi bấm/giữ thẻ
+ *   - selected, showSelection: Hỗ trợ chọn nhiều goal
+ *   - onQuickAction: Gọi action nhanh
+ *
+ * Sử dụng:
+ *   - Hiển thị thông tin goal, badge trạng thái/ưu tiên, tiến độ
+ */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Card, Badge, ProgressBar } from '../../ui';

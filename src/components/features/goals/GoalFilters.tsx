@@ -1,3 +1,17 @@
+/*
+ * GoalFilters - Bộ lọc cho danh sách goal
+ *
+ * Chức năng:
+ *   - Tìm kiếm, lọc theo trạng thái, độ ưu tiên, sắp xếp
+ *
+ * Props:
+ *   - filters: Trạng thái bộ lọc
+ *   - onFiltersChange: Hàm cập nhật bộ lọc
+ *   - style: Style tuỳ chỉnh
+ *
+ * Sử dụng:
+ *   - Cập nhật bộ lọc khi người dùng thao tác
+ */
 import React from 'react';
 import { View, Text, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '../../ui';

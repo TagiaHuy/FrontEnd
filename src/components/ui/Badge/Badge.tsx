@@ -1,16 +1,19 @@
+// Badge.tsx - Badge component hiển thị nhãn nhỏ với nhiều biến thể màu sắc và kích thước
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, textStyles, spacing, borderRadius } from '../../../styles';
 
+// Định nghĩa các props cho Badge
 export interface BadgeProps {
-  label: string;
-  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info';
-  size?: 'small' | 'medium' | 'large';
-  children?: React.ReactNode;
-  style?: any;
-  textStyle?: any;
+  label: string; // Nội dung hiển thị trên badge
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info'; // Kiểu màu sắc
+  size?: 'small' | 'medium' | 'large'; // Kích thước badge
+  children?: React.ReactNode; // Có thể truyền icon hoặc component khác vào badge
+  style?: any; // Custom style cho View
+  textStyle?: any; // Custom style cho Text
 }
 
+// Component Badge
 const Badge: React.FC<BadgeProps> = ({
   label,
   variant = 'primary',
@@ -19,6 +22,7 @@ const Badge: React.FC<BadgeProps> = ({
   style,
   textStyle,
 }) => {
+  // Tạo style cho badge dựa trên variant và size
   const badgeStyle = [
     styles.base,
     styles[variant],
@@ -26,6 +30,7 @@ const Badge: React.FC<BadgeProps> = ({
     style,
   ];
 
+  // Tạo style cho text, có thể custom thêm từ props
   const textStyleArray = [
     { fontSize: 16, color: 'black', fontWeight: 'bold' },
     textStyle,
@@ -33,12 +38,14 @@ const Badge: React.FC<BadgeProps> = ({
 
   return (
     <View style={badgeStyle}>
+      {/* Nếu có children (ví dụ icon) thì render trước label */}
       {children}
       <Text style={textStyleArray}>{label}</Text>
     </View>
   );
 };
 
+// StyleSheet cho Badge
 const styles = StyleSheet.create({
   base: {
     flexDirection: 'row',
@@ -47,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
   },
   
-  // Variants
+  // Các biến thể màu sắc
   primary: {
     backgroundColor: colors.primary.main,
   },
@@ -67,7 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.info.main,
   },
   
-  // Sizes
+  // Các kích thước
   small: {
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
@@ -84,14 +91,14 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   
-  // Text styles
+  // Style cho text (không dùng trực tiếp, để tham khảo)
   text: {
     ...textStyles.caption,
     textAlign: 'center',
     fontWeight: '500',
   },
   
-  // Variant text colors
+  // Màu chữ cho từng biến thể (không dùng trực tiếp, để tham khảo)
   primaryText: {
     color: colors.primary.contrast,
   },
@@ -111,7 +118,7 @@ const styles = StyleSheet.create({
     color: colors.info.contrast,
   },
   
-  // Size text styles
+  // Kích thước chữ cho từng size (không dùng trực tiếp, để tham khảo)
   smallText: {
     fontSize: 10,
   },

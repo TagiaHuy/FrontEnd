@@ -1,3 +1,22 @@
+/*
+ * LoginForm - Form đăng nhập cho người dùng
+ *
+ * Chức năng:
+ *   - Cho phép người dùng nhập email, mật khẩu để đăng nhập
+ *   - Hỗ trợ nhớ đăng nhập, quên mật khẩu, đăng nhập mạng xã hội
+ *
+ * Props:
+ *   - onSubmit: Hàm xử lý khi submit form
+ *   - onForgotPassword: Hàm xử lý khi bấm 'Quên mật khẩu'
+ *   - onRegister: Chuyển sang trang đăng ký
+ *   - onSocialLogin: Đăng nhập qua mạng xã hội
+ *   - loading: Trạng thái loading khi đang xử lý
+ *
+ * Sử dụng:
+ *   - Quản lý state form bằng useForm
+ *   - Validate email, password
+ *   - Gọi onSubmit khi hợp lệ
+ */
 import React from 'react';
 import { View, Text, StyleSheet, Alert, TextInput, TouchableOpacity } from 'react-native';
 import { Button, Input } from '../../ui';

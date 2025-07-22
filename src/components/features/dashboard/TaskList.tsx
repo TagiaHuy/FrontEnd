@@ -1,3 +1,21 @@
+/*
+ * TaskList - Danh sách các nhiệm vụ (task) trong ngày
+ *
+ * Chức năng:
+ *   - Hiển thị danh sách các task
+ *   - Cho phép tick hoàn thành, chọn task
+ *   - Đổi màu theo độ ưu tiên
+ *
+ * Props:
+ *   - tasks: Mảng các task
+ *   - onTaskPress: Hàm xử lý khi bấm vào task
+ *   - onTaskToggle: Hàm tick hoàn thành task
+ *   - style: Style tuỳ chỉnh
+ *
+ * Sử dụng:
+ *   - Hiển thị từng task dạng thẻ
+ *   - Nếu không có task sẽ hiện thông báo
+ */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Card } from '../../ui';

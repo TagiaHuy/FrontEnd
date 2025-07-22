@@ -1926,8 +1926,7 @@ Authorization: Bearer jwt_token_here
         }
       ],
       "milestone": "Có khả năng tạo ứng dụng cơ bản"
-    }
-  ],
+    }  ],
   "timeline": {
     "start_date": "2024-01-01",
     "end_date": "2024-03-31",

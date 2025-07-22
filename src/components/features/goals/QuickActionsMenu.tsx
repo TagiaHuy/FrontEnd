@@ -1,3 +1,17 @@
+/*
+ * QuickActionsMenu - Menu các hành động nhanh cho goal
+ *
+ * Chức năng:
+ *   - Hiển thị danh sách các action, mỗi action có icon và label
+ *   - Bấm vào gọi hàm tương ứng
+ *
+ * Props:
+ *   - actions: Mảng các action (id, icon, label, onPress)
+ *   - style: Style tuỳ chỉnh
+ *
+ * Sử dụng:
+ *   - Hiển thị menu action, bấm gọi onPress
+ */
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Card } from '../../ui';

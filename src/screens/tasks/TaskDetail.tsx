@@ -13,17 +13,22 @@ const statusOptions = [
 ];
 
 const TaskDetail = ({ navigation, route }) => {
-  const { taskId } = route.params;
-  const { isLoading, withLoading } = useLoading(true);
-  const [task, setTask] = useState(null);
-  const [status, setStatus] = useState('');
+  const { taskId, taskData } = route.params;
+  const { isLoading, withLoading } = useLoading(!taskData);
+  const [task, setTask] = useState(taskData || null);
+  const [status, setStatus] = useState(taskData ? taskData.status : '');
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [relatedTasks, setRelatedTasks] = useState([]);
   const [isSavingStatus, setIsSavingStatus] = useState(false);
 
   useEffect(() => {
-    withLoading(loadTask);
+    if (!taskData) {
+      withLoading(loadTask);
+    } else {
+      setTask(taskData);
+      setStatus(taskData.status);
+    }
   }, [taskId]);
 
   const loadTask = async () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import { useLoading } from '../../hooks/useLoading';
@@ -31,19 +31,22 @@ const GoalDetail = ({ navigation, route }) => {
   }, [goalId]);
 
   const loadGoalDetail = async () => {
-    // ... giữ nguyên logic fetch API ...
     try {
       // Load goal information
       const goalResponse = await apiService.get(`/goals/${goalId}`);
       const goalData = goalResponse.goal || goalResponse;
       setGoal(goalData);
-      // Load progress with phases
-      const progressResponse = await apiService.get(`/goals/${goalId}/progress-with-phases`);
-      setPhases(progressResponse.phases || []);
-      setProgress(progressResponse.goal?.overall_progress ?? goalData.progress ?? 0);
-      // Load tasks from API
-      const tasksResponse = await apiService.get(`/tasks?goal_id=${goalId}`);
-      setTasks(tasksResponse.tasks || []);
+      // Load roadmap (phases + tasks)
+      const roadmapResponse = await apiService.get(`/goals/${goalId}/roadmap`);
+      console.log(roadmapResponse);
+      // roadmapResponse.roadmap: [{ phase, tasks, milestone }]
+      const phasesFromRoadmap = roadmapResponse.roadmap.map(item => ({ ...item.phase, milestone: item.milestone, tasks: item.tasks }));
+      setPhases(phasesFromRoadmap);
+      // Flatten all tasks from all phases for Tasks Overview
+      const allTasks = roadmapResponse.roadmap.flatMap(item => item.tasks.map(task => ({ ...task, phase: item.phase.title })));
+      setTasks(allTasks);
+      // Progress: tính tổng progress trung bình các phase hoặc lấy từ goal nếu có
+      setProgress(goalData.progress ?? 0);
     } catch (error) {
       console.error('Error loading goal detail:', error);
     } finally {
@@ -116,17 +119,8 @@ const GoalDetail = ({ navigation, route }) => {
       return;
     }
     setSelectedPhaseId(phase.id);
-    if (!phaseTasksMap[phase.id]) {
-      setLoadingPhaseId(phase.id);
-      try {
-        const res = await apiService.get(`/goals/${goalId}/phases/${phase.id}/tasks`);
-        setPhaseTasksMap(prev => ({ ...prev, [phase.id]: res.tasks || [] }));
-      } catch (e) {
-        Alert.alert('Error', 'Failed to load tasks for phase');
-      } finally {
-        setLoadingPhaseId(null);
-      }
-    }
+    // Không cần gọi API nữa, tasks đã có sẵn trong phase.tasks
+    setPhaseTasksMap(prev => ({ ...prev, [phase.id]: phase.tasks || [] }));
   };
   // Toggle task complete
   const handleToggleTaskComplete = async (task, phaseId) => {
@@ -239,8 +233,8 @@ const GoalDetail = ({ navigation, route }) => {
               phase={phase}
               isSelected={selectedPhaseId === phase.id}
               onExpand={handleExpandPhase}
-              tasks={phaseTasksMap[phase.id] || []}
-              loadingTasks={loadingPhaseId === phase.id}
+              tasks={phaseTasksMap[phase.id] || phase.tasks || []}
+              loadingTasks={false}
               onToggleTask={task => handleToggleTaskComplete(task, phase.id)}
               updatingTaskIds={updatingTaskIds}
             />
@@ -267,17 +261,19 @@ const GoalDetail = ({ navigation, route }) => {
             </View>
           </View>
           {tasks.slice(0, 5).map(task => (
-            <Card key={task.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, padding: spacing.md }}>
-              <Text style={{ fontSize: 16, marginRight: spacing.md }}>{task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '⏳'}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={textStyles.body2}>{task.title}</Text>
-                <Text style={textStyles.caption}>{task.phase}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={textStyles.caption}>{formatStatus(task.status)}</Text>
-                  {task.deadline && <Text style={textStyles.caption}> | Due: {formatDate(task.deadline)}</Text>}
+            <TouchableOpacity key={task.id} onPress={() => navigation.navigate('TaskDetail', { taskId: task.id, taskData: task })}>
+              <Card style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, padding: spacing.md }}>
+                <Text style={{ fontSize: 16, marginRight: spacing.md }}>{task.status === 'completed' ? '✅' : task.status === 'in_progress' ? '🔄' : '⏳'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={textStyles.body2}>{task.title}</Text>
+                  <Text style={textStyles.caption}>{task.phase}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Text style={textStyles.caption}>{formatStatus(task.status)}</Text>
+                    {task.deadline && <Text style={textStyles.caption}> | Due: {formatDate(task.deadline)}</Text>}
+                  </View>
                 </View>
-              </View>
-            </Card>
+              </Card>
+            </TouchableOpacity>
           ))}
           {tasks.length > 5 && (
             <Button title={`View all ${tasks.length} tasks`} variant="ghost" onPress={() => {}} />

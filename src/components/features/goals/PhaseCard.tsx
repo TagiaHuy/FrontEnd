@@ -1,3 +1,22 @@
+/*
+ * PhaseCard - Thẻ hiển thị thông tin một phase (giai đoạn) của goal
+ *
+ * Chức năng:
+ *   - Hiển thị tiêu đề, tiến độ, số task hoàn thành, danh sách task
+ *   - Mở rộng/thu gọn để xem task, tick hoàn thành task
+ *
+ * Props:
+ *   - phase: Dữ liệu phase
+ *   - isSelected: Có đang mở rộng phase không
+ *   - onExpand: Hàm mở rộng/thu gọn phase
+ *   - tasks: Danh sách task thuộc phase
+ *   - loadingTasks: Đang loading task
+ *   - onToggleTask: Đánh dấu hoàn thành task
+ *   - updatingTaskIds: Danh sách id task đang cập nhật
+ *
+ * Sử dụng:
+ *   - Hiển thị thông tin phase, danh sách task khi mở rộng
+ */
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Card, ProgressBar } from '../../ui';

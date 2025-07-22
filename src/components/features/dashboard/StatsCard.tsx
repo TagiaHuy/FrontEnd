@@ -1,3 +1,17 @@
+/*
+ * StatsCard - Thẻ thống kê tiến độ
+ *
+ * Chức năng:
+ *   - Hiển thị số lượng đã hoàn thành, tổng số, label
+ *   - Hiển thị thanh tiến độ (ProgressBar)
+ *
+ * Props:
+ *   - stats: Dữ liệu thống kê (completed, total, label, color)
+ *   - style: Style tuỳ chỉnh
+ *
+ * Sử dụng:
+ *   - Tính phần trăm hoàn thành, đổi màu theo tiến độ
+ */
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Card, ProgressBar } from '../../ui';
