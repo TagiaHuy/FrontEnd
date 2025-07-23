@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button, Loading } from '../../components/ui';
 import { colors, spacing, textStyles, priorityColors, commonStyles } from '../../styles';
 import { useLoading } from '../../hooks/useLoading';
-
 // Kiểu dữ liệu cho lỗi của form
 type Errors = {
   goalName?: string;
@@ -18,7 +17,6 @@ const CreateGoal = ({ navigation }) => {
   const { user } = useAuth();
   const { isLoading, withLoading } = useLoading(false);
   const [isSaving, setIsSaving] = useState(false);
-
   // Các trường của form
   const [goalName, setGoalName] = useState('');
   const [description, setDescription] = useState('');
@@ -243,6 +241,7 @@ const CreateGoal = ({ navigation }) => {
         };
         await apiService.post('/goals', goalData);
         await clearDraft();
+
         Alert.alert(
           'Success',
           'Goal created successfully!',

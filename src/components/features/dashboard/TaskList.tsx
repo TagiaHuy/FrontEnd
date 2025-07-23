@@ -24,9 +24,19 @@ import { colors, textStyles, spacing, priorityColors } from '../../../styles';
 export interface Task {
   id: number;
   title: string;
-  completed: boolean;
-  priority: 'high' | 'medium' | 'low';
+  description: string;
+  deadline: string;
+  goal?: {
+    id: number | null;
+    title: string | null;
+  };
+  phase?: any;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'in_progress' | 'completed';
+  suggested_duration: number;
+  remaining_time?: string;
 }
+
 
 export interface TaskListProps {
   tasks: Task[];
@@ -52,8 +62,8 @@ const TaskList: React.FC<TaskListProps> = ({
   const handleTaskToggle = (task: Task) => {
     onTaskToggle?.(task.id, !task.completed);
   };
-
-  if (tasks.length === 0) {
+  console.log('TaskList rendered with tasks:', tasks);
+  if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
     return (
       <View style={[styles.container, style]}>
         <Text style={styles.title}>Today's Tasks</Text>

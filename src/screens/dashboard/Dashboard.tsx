@@ -1,16 +1,18 @@
 // Dashboard.tsx - Màn hình tổng quan chính của ứng dụng
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   ScrollView,
+  RefreshControl,
   Alert,
   Dimensions
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useGoals } from '../../context/GoalContext';
 import { apiService } from '../../services/api';
 import { 
   StatsCard, 
@@ -29,86 +31,97 @@ const { width } = Dimensions.get('window');
 const Dashboard = ({ navigation }) => {
   // Lấy thông tin user và hàm logout từ context
   const { user, logout } = useAuth();
-
+  const { goals, reloadGoals, loading: loadingGoals } = useGoals();
+  
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Gọi lại hàm reloadGoals để cập nhật danh sách goals
+      await reloadGoals(); 
+      // Tải lại dữ liệu dashboard
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Error refreshing dashboard:', error);
+      Alert.alert('Error', 'Failed to refresh dashboard data.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reloadGoals]);
   // Các hook useApi để quản lý loading và gọi API cho từng loại dữ liệu
   const { isLoading: isLoadingGoals, execute: executeGoals } = useApi();
   const { isLoading: isLoadingTasks, execute: executeTasks } = useApi();
   const { isLoading: isLoadingStats, execute: executeStats } = useApi();
 
   // State lưu trữ danh sách goals, tasks hôm nay và thống kê
-  const [goals, setGoals] = React.useState([]);
-  const [todayTasks, setTodayTasks] = React.useState<Task[]>([]);
-  const [stats, setStats] = React.useState({
+  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [stats, setStats] = useState({
     totalGoals: 0,
     completedGoals: 0,
     totalTasks: 0,
     completedTasks: 0,
   });
 
-  // useEffect để load dữ liệu dashboard khi component mount
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Các hàm điều hướng đến các màn hình khác
+  const handleProfile = useCallback(() => navigation.navigate('Profile'), [navigation]);
+  const handleSettings = useCallback(() => navigation.navigate('Settings'), [navigation]);
+  const handleAnalytics = useCallback(() => navigation.navigate('Analytics'), [navigation]);
+  const handleGoals = useCallback(() => navigation.navigate('GoalsList'), [navigation]);
+  const handleAddTask = useCallback(() => Alert.alert('Add Task', 'Add task functionality will be implemented.'), []);
 
-  // Hàm load dữ liệu dashboard từ API
-  const loadDashboardData = async () => {
+    // Danh sách các quick action trên dashboard
+  const quickActions: QuickAction[] = useMemo(() => [
+    { id: 'add-task', title: 'Add Task', icon: '📝', onPress: handleAddTask },
+    { id: 'profile', title: 'Profile', icon: '👤', onPress: handleProfile },
+    { id: 'settings', title: 'Settings', icon: '⚙️', onPress: handleSettings },
+    { id: 'analytics', title: 'Analytics', icon: '📊', onPress: handleAnalytics },
+    { id: 'goals', title: 'Goals', icon: '🎯', onPress: handleGoals },
+  ], [handleAddTask, handleProfile, handleSettings, handleAnalytics, handleGoals]);
+
+  // Dữ liệu thống kê cho các StatsCard
+  const statsData: StatsData[] = useMemo(() => [
+    { completed: stats.completedGoals, total: stats.totalGoals, label: 'Goals' },
+    { completed: stats.completedTasks, total: stats.totalTasks, label: 'Tasks' },
+  ], [stats]);
+
+
+  // Load dashboard data
+  const loadDashboardData = useCallback(async () => {
     try {
-      // Lấy danh sách goals
-      const goalsResult = await executeGoals(async () => {
-        const goalsData = await apiService.get('/goals');
-        setGoals(goalsData.slice(0, 3)); // Hiển thị 3 goal gần nhất
-        return goalsData;
-      });
 
-      // Lấy danh sách task hôm nay
+      await reloadGoals();
       const tasksResult = await executeTasks(async () => {
         const tasksData = await apiService.get('/tasks/today');
-        setTodayTasks(tasksData);
-        return tasksData;
+        console.log("today task ", tasksData.tasks);
+        setTodayTasks(tasksData.tasks);
+        return tasksData; 
       });
 
-      // Lấy thống kê goals/tasks
       const statsResult = await executeStats(async () => {
         const statsData = await apiService.get('/goals/stats');
         setStats(statsData);
         return statsData;
       });
 
-      // Nếu có lỗi khi lấy dữ liệu, dùng mock data cho dev
-      if (!goalsResult.success || !tasksResult.success || !statsResult.success) {
-        // Dùng dữ liệu mock cho phát triển
-        setMockData();
-      }
-
-      console.log('Dashboard data loaded:', { goals, tasks: todayTasks, stats });
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      setMockData();
+      Alert.alert('Error', 'Failed to load dashboard data. Please try again later.');
     }
-  };
+  }, [reloadGoals, executeTasks, executeStats]);
 
-  // Hàm set dữ liệu mock cho phát triển
-  const setMockData = () => {
-    setGoals([
-      { id: 1, title: 'Learn React Native', progress: 75, deadline: '2024-01-15' },
-      { id: 2, title: 'Complete Project', progress: 45, deadline: '2024-01-20' },
-      { id: 3, title: 'Exercise Daily', progress: 90, deadline: '2024-01-10' },
-    ]);
-    setTodayTasks([
-      { id: 1, title: 'Complete login screen', completed: false, priority: 'high' },
-      { id: 2, title: 'Review code', completed: true, priority: 'medium' },
-      { id: 3, title: 'Update documentation', completed: false, priority: 'low' },
-    ]);
-    setStats({
-      totalGoals: 5,
-      completedGoals: 2,
-      totalTasks: 12,
-      completedTasks: 8,
-    });
-  };
+  // useEffect để load dữ liệu dashboard khi component mount
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
+  const handleTaskToggle = useCallback((taskId: number, completed: boolean) => {
+    setTodayTasks(prev => prev.map(task => task.id === taskId ? { ...task, completed } : task));
+  }, []);
 
   // Hàm xử lý logout
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -117,46 +130,7 @@ const Dashboard = ({ navigation }) => {
         { text: 'Logout', style: 'destructive', onPress: logout },
       ]
     );
-  };
-
-  // Các hàm điều hướng đến các màn hình khác
-  const handleProfile = () => navigation.navigate('Profile');
-  const handleSettings = () => navigation.navigate('Settings');
-  const handleAnalytics = () => navigation.navigate('Analytics');
-  const handleGoals = () => navigation.navigate('GoalsList');
-  const handleAddTask = () => Alert.alert('Add Task', 'Add task functionality will be implemented.');
-
-  // Danh sách các quick action trên dashboard
-  const quickActions: QuickAction[] = [
-    { id: 'add-task', title: 'Add Task', icon: '📝', onPress: handleAddTask },
-    { id: 'profile', title: 'Profile', icon: '👤', onPress: handleProfile },
-    { id: 'settings', title: 'Settings', icon: '⚙️', onPress: handleSettings },
-    { id: 'analytics', title: 'Analytics', icon: '📊', onPress: handleAnalytics },
-    { id: 'goals', title: 'Goals', icon: '🎯', onPress: handleGoals },
-  ];
-
-  // Dữ liệu thống kê cho các StatsCard
-  const statsData: StatsData[] = [
-    {
-      completed: stats.completedGoals,
-      total: stats.totalGoals,
-      label: 'Goals',
-    },
-    {
-      completed: stats.completedTasks,
-      total: stats.totalTasks,
-      label: 'Tasks',
-    },
-  ];
-
-  // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
-  const handleTaskToggle = (taskId: number, completed: boolean) => {
-    setTodayTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, completed } : task
-      )
-    );
-  };
+  }, [logout]);
 
   // Xác định trạng thái loading tổng hợp
   const isLoading = isLoadingGoals || isLoadingTasks || isLoadingStats;
@@ -168,7 +142,16 @@ const Dashboard = ({ navigation }) => {
 
   // Render UI chính của dashboard
   return (
-    <ScrollView style={commonStyles.container}>
+    <ScrollView 
+    style={commonStyles.container}
+    refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        />
+      }
+    >
+      
       {/* Header - Chào mừng user */}
       <View style={styles.header}>
         <Text style={styles.welcomeText}>Welcome back, {user?.name}!</Text>

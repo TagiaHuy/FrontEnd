@@ -26,6 +26,7 @@ import CreatePhase from './src/screens/goals/CreatePhase';
 // Import các màn hình liên quan đến tasks
 import CreateTask from './src/screens/tasks/CreateTask';
 import TaskDetail from './src/screens/tasks/TaskDetail';
+import { GoalProvider } from './src/context/GoalContext';
 
 // Khởi tạo Stack Navigator
 const Stack = createNativeStackNavigator();
@@ -129,10 +130,12 @@ const AppNavigator = () => {
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <AppNavigator />
-        <StatusBar style="auto" />
-      </NavigationContainer>
+      <GoalProvider>
+        <NavigationContainer>
+          <AppNavigator />
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </GoalProvider>
     </AuthProvider>
   );
 }
