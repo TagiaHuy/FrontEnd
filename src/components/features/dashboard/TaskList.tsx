@@ -35,6 +35,7 @@ export interface Task {
   status: 'pending' | 'in_progress' | 'completed';
   suggested_duration: number;
   remaining_time?: string;
+  completed: boolean;
 }
 
 

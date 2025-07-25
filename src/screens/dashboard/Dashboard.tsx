@@ -106,7 +106,7 @@ const Dashboard = ({ navigation }) => {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data. Please try again later.');
+      Alert.alert('Error', 'Failed to load dashboard data. Please try again later.');     
     }
   }, [reloadGoals, executeTasks, executeStats]);
 
@@ -116,9 +116,31 @@ const Dashboard = ({ navigation }) => {
   }, [loadDashboardData]);
 
   // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
-  const handleTaskToggle = useCallback((taskId: number, completed: boolean) => {
-    setTodayTasks(prev => prev.map(task => task.id === taskId ? { ...task, completed } : task));
+  // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
+  const handleTaskToggle = useCallback(async (taskId: number, completed: boolean) => {
+    // Cập nhật UI trước (optimistic update)
+    setTodayTasks(prev =>
+      prev.map(task =>
+        task.id === taskId ? { ...task, completed } : task
+      )
+    );
+
+    // Gửi request cập nhật status lên server
+    const newStatus = completed ? 'completed' : 'in_progress';
+
+    try {
+      await apiService.put(`/tasks/${taskId}/status`, { status: newStatus });
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+      // (Tùy chọn) rollback nếu thất bại
+      setTodayTasks(prev =>
+        prev.map(task =>
+          task.id === taskId ? { ...task, completed: !completed } : task
+        )
+      );
+    }
   }, []);
+
 
   // Hàm xử lý logout
   const handleLogout = useCallback(() => {
@@ -182,7 +204,7 @@ const Dashboard = ({ navigation }) => {
       </View>
 
       {/* Recent Goals - Các goal gần đây */}
-      <View style={styles.goalsSection}>
+      {/* <View style={styles.goalsSection}>
         <Text style={styles.sectionTitle}>Recent Goals</Text>
         {goals.map((goal) => (
           <Card key={goal.id} variant="elevated" padding="small" style={styles.goalCard}>
@@ -207,7 +229,7 @@ const Dashboard = ({ navigation }) => {
             </View>
           </Card>
         ))}
-      </View>
+      </View> */}
 
       {/* Statistics Chart Placeholder - Biểu đồ thống kê (chưa implement) */}
       <View style={styles.statsSection}>
