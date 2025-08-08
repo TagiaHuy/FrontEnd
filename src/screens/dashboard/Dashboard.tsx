@@ -22,10 +22,12 @@ import {
   QuickAction,
   Task
 } from '../../components/features/dashboard';
+import { LineChart } from '../../components/features/analytics';
 import { Button, Card, Loading } from '../../components/ui';
 import { useApi, useMultipleLoading } from '../../hooks';
-import { colors, textStyles, spacing, commonStyles } from '../../styles';
+import { colors, textStyles, spacing, commonStyles, borderWidth } from '../../styles';
 
+const screenWidth = Dimensions.get('window').width;
 const { width } = Dimensions.get('window');
 
 const Dashboard = ({ navigation }) => {
@@ -53,6 +55,7 @@ const Dashboard = ({ navigation }) => {
   const { isLoading: isLoadingGoals, execute: executeGoals } = useApi();
   const { isLoading: isLoadingTasks, execute: executeTasks } = useApi();
   const { isLoading: isLoadingStats, execute: executeStats } = useApi();
+  const { isLoading: isLoadingWeeklyStats, execute: executeWeeklyStats } = useApi();
 
   // State lưu trữ danh sách goals, tasks hôm nay và thống kê
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
@@ -62,6 +65,13 @@ const Dashboard = ({ navigation }) => {
     totalTasks: 0,
     completedTasks: 0,
   });
+  const [weeklyStats, setWeeklyStats] = useState<any[]>([]);
+  
+  // weeklyStats format: [
+  //   { completedTasks: number, date: "2025-07-23T17:00:00.000Z" },
+  //   { completedTasks: number, date: "2025-07-26T17:00:00.000Z" },
+  //   ...
+  // ]
 
   // Các hàm điều hướng đến các màn hình khác
   const handleProfile = useCallback(() => navigation.navigate('Profile'), [navigation]);
@@ -85,12 +95,54 @@ const Dashboard = ({ navigation }) => {
     { completed: stats.completedTasks, total: stats.totalTasks, label: 'Tasks' },
   ], [stats]);
 
+  // Chuẩn bị dữ liệu cho Line Chart
+  const chartData = useMemo(() => {
+    if (!weeklyStats || !Array.isArray(weeklyStats) || weeklyStats.length === 0) {
+      return null;
+    }
+
+    // Tạo mảng 7 ngày gần nhất (từ hôm nay đếm ngược)
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const labels = [];
+    const data = [];
+
+    // Lấy 7 ngày gần nhất
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dayName = days[date.getDay()];
+      labels.push(dayName);
+
+      // Tìm dữ liệu cho ngày này trong weeklyStats
+      const dayData = weeklyStats.find((stat: any) => {
+        try {
+          const statDate = new Date(stat.date);
+          // Compare dates by converting to local date strings (YYYY-MM-DD format)
+          const statDateStr = statDate.toISOString().split('T')[0];
+          const targetDateStr = date.toISOString().split('T')[0];
+          return statDateStr === targetDateStr;
+        } catch (error) {
+          console.error('Error parsing date:', error);
+          return false;
+        }
+      });
+
+      data.push(dayData ? (dayData.completedTasks || 0) : 0);
+    }
+
+    return {
+      labels,
+      datasets: [{ data }]
+    };
+  }, [weeklyStats]);
+
+  console.log("Chart Data", chartData);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     try {
-
       await reloadGoals();
+      
       const tasksResult = await executeTasks(async () => {
         const tasksData = await apiService.get('/tasks/today');
         console.log("today task ", tasksData.tasks);
@@ -104,16 +156,33 @@ const Dashboard = ({ navigation }) => {
         return statsData;
       });
 
+      const weeklyStatsResult = await executeWeeklyStats(async () => {
+        const weeklyStatsData = await apiService.get('/tasks/stats');
+        console.log("weekly stats ", weeklyStatsData);
+        setWeeklyStats(weeklyStatsData);
+        return weeklyStatsData;
+      });
+
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data. Please try again later.');     
     }
-  }, [reloadGoals, executeTasks, executeStats]);
+  }, [reloadGoals, executeTasks, executeStats, executeWeeklyStats]);
 
   // useEffect để load dữ liệu dashboard khi component mount
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Debug logging for chart data
+  useEffect(() => {
+    if (weeklyStats && weeklyStats.length > 0) {
+      console.log('Weekly stats updated:', weeklyStats);
+      if (chartData) {
+        console.log('Chart data prepared:', chartData);
+      }
+    }
+  }, [weeklyStats, chartData]);
 
   // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
   // Hàm xử lý toggle trạng thái hoàn thành của task hôm nay
@@ -155,7 +224,7 @@ const Dashboard = ({ navigation }) => {
   }, [logout]);
 
   // Xác định trạng thái loading tổng hợp
-  const isLoading = isLoadingGoals || isLoadingTasks || isLoadingStats;
+  const isLoading = isLoadingGoals || isLoadingTasks || isLoadingStats || isLoadingWeeklyStats;
 
   // Hiển thị loading khi đang lấy dữ liệu
   if (isLoading) {
@@ -231,13 +300,24 @@ const Dashboard = ({ navigation }) => {
         ))}
       </View> */}
 
-      {/* Statistics Chart Placeholder - Biểu đồ thống kê (chưa implement) */}
+      {/* Statistics Chart - Biểu đồ thống kê */}
       <View style={styles.statsSection}>
+    
         <Text style={styles.sectionTitle}>Statistics</Text>
-        <Card variant="elevated" padding="large" style={styles.chartPlaceholder}>
-          <Text style={styles.chartText}>📊</Text>
-          <Text style={styles.chartLabel}>Weekly Progress Chart</Text>
-          <Text style={styles.chartNote}>Chart visualization will be implemented</Text>
+        <Card variant="elevated" padding="small" style={[styles.chartCard]}>
+          {chartData ? (
+              <LineChart 
+                data={chartData} 
+                title="Weekly Completed Tasks" 
+                height={220}
+              />
+          ) : (
+            <View style={styles.chartPlaceholder}>
+              <Text style={styles.chartText}>📊</Text>
+              <Text style={styles.chartLabel}>Weekly Progress Chart</Text>
+              <Text style={styles.chartNote}>Loading chart...</Text>
+            </View>
+          )}
         </Card>
       </View>
 
@@ -337,6 +417,9 @@ const styles = StyleSheet.create({
   statsSection: {
     padding: spacing.lg,
     paddingTop: 0,
+  },
+  chartCard: {
+    // Chart card specific styles
   },
   chartPlaceholder: {
     alignItems: 'center',

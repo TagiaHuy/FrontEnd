@@ -22,7 +22,7 @@ import GoalsList from './src/screens/goals/GoalsList';
 import CreateGoal from './src/screens/goals/CreateGoal';
 import GoalDetail from './src/screens/goals/GoalDetail';
 import EditGoal from './src/screens/goals/EditGoal';
-import CreatePhase from './src/screens/goals/CreatePhase';
+import CreatePhase from './src/screens/phases/CreatePhase';
 // Import các màn hình liên quan đến tasks
 import CreateTask from './src/screens/tasks/CreateTask';
 import TaskDetail from './src/screens/tasks/TaskDetail';

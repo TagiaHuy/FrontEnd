@@ -1,15 +1,17 @@
 // Analytics.tsx - Màn hình tổng hợp phân tích hiệu suất người dùng
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Dimensions } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import Button from '../../components/ui/Button';
 import Loading from '../../components/ui/Loading';
 import StatCard from '../../components/features/analytics/StatCard';
-import ChartPlaceholder from '../../components/features/analytics/ChartPlaceholder';
+import { LineChart, BarChart, DoughnutChart } from '../../components/features/analytics';
 import InsightCard from '../../components/features/analytics/InsightCard';
 import { colors, textStyles, spacing, borderRadius } from '../../styles';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 // Component chính cho màn hình Analytics
 const Analytics = () => {
@@ -59,15 +61,23 @@ const Analytics = () => {
     try {
       setIsLoading(true);
       
-      // Lấy thống kê task
+      // 1. Lấy thống kê task
       const taskData = await apiService.get(`/tasks/statistics?range=${dateRange}`);
       setTaskStats(taskData);
       
-      // Lấy thống kê goal
+      // 2. Lấy thống kê goal
       const goalData = await apiService.get(`/goals/stats?range=${dateRange}`);
       setGoalStats(goalData);
       
-      console.log('Analytics data loaded:', { taskData, goalData });
+      // 3. Lấy thống kê thời gian làm việc
+      const timeData = await apiService.get(`/time-tracking/summary?range=${dateRange}`);
+      setTimeTracking(timeData);
+      
+      // 4. Lấy gợi ý năng suất
+      const insightsData = await apiService.get(`/analytics/insights?range=${dateRange}`);
+      setProductivityInsights(insightsData);
+      
+      console.log('Analytics data loaded:', { taskData, goalData, timeData, insightsData });
     } catch (error) {
       console.error('Error loading analytics data:', error);
       // Nếu lỗi thì dùng dữ liệu mock cho dev
@@ -131,8 +141,47 @@ const Analytics = () => {
 
   // Hàm export dữ liệu (chưa implement)
   const exportData = (format: string) => {
-    // TODO: Implement export functionality
     Alert.alert('Export', `${format.toUpperCase()} export functionality will be implemented.`);
+  };
+
+  // Chuẩn bị dữ liệu cho các biểu đồ
+  const taskBarData = {
+    labels: ['Completed', 'Pending', 'Overdue'],
+    datasets: [{ data: [taskStats.completed, taskStats.pending, taskStats.overdue] }],
+  };
+
+  const goalDoughnutData = [
+    {
+      name: 'Completed',
+      population: goalStats.completed || 0,
+      color: colors.success.main,
+      legendFontColor: colors.text.primary,
+      legendFontSize: 12,
+    },
+    {
+      name: 'In Progress',
+      population: goalStats.inProgress || 0,
+      color: colors.primary.main,
+      legendFontColor: colors.text.primary,
+      legendFontSize: 12,
+    },
+    {
+      name: 'Not Started',
+      population: Math.max(0, (goalStats.total || 0) - (goalStats.completed || 0) - (goalStats.inProgress || 0)),
+      color: colors.neutral.gray300,
+      legendFontColor: colors.text.primary,
+      legendFontSize: 12,
+    },
+  ].filter(item => item.population > 0); // Only show segments with data
+
+  const timeLineData = {
+    labels: timeTracking.weeklyData?.map(d => d.day) || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{ data: timeTracking.weeklyData?.map(d => d.hours) || [0, 0, 0, 0, 0, 0, 0] }],
+  };
+
+  const taskCompletionBarData = {
+    labels: timeTracking.weeklyData?.map(d => d.day) || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{ data: timeTracking.weeklyData?.map(d => d.tasks) || [0, 0, 0, 0, 0, 0, 0] }],
   };
 
   // Hiển thị loading khi đang lấy dữ liệu
@@ -143,13 +192,13 @@ const Analytics = () => {
   // Render UI chính
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
+      {/* 1. HEADER */}
       <View style={styles.header}>
         <Text style={styles.title}>Analytics Dashboard</Text>
         <Button title="Export" onPress={handleExport} />
       </View>
 
-      {/* Bộ lọc thời gian */}
+      {/* 2. BỘ LỌC */}
       <View style={styles.filterSection}>
         <Text style={styles.filterTitle}>Time Period</Text>
         <View style={styles.filterButtons}>
@@ -166,7 +215,7 @@ const Analytics = () => {
         </View>
       </View>
 
-      {/* Thống kê Task */}
+      {/* 3. TASK STATISTICS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Task Statistics</Text>
         <View style={styles.statsGrid}>
@@ -191,7 +240,8 @@ const Analytics = () => {
             color={colors.error.main}
           />
         </View>
-        {/* Tỷ lệ hoàn thành task */}
+        
+        {/* Completion Rate */}
         <View style={styles.completionCard}>
           <Text style={styles.completionTitle}>Completion Rate</Text>
           <Text style={styles.completionRate}>{taskStats.completionRate}%</Text>
@@ -204,36 +254,19 @@ const Analytics = () => {
             />
           </View>
         </View>
+
+        {/* 📊 Biểu đồ Bar: Task Statistics */}
+        <BarChart 
+          data={taskBarData}
+          title="Task Status Distribution"
+          height={200}
+          width={screenWidth - 32}
+        />
       </View>
 
-      {/* Thống kê Goal */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Goal Progress</Text>
-        <View style={styles.statsGrid}>
-          <StatCard 
-            title="Total Goals" 
-            value={goalStats.total} 
-            color={colors.primary.main}
-          />
-          <StatCard 
-            title="Completed" 
-            value={goalStats.completed} 
-            color={colors.success.main}
-          />
-          <StatCard 
-            title="In Progress" 
-            value={goalStats.inProgress} 
-            color={colors.info.main}
-          />
-          <StatCard 
-            title="Completion Rate" 
-            value={`${goalStats.completionRate}%`} 
-            color={colors.secondary.main}
-          />
-        </View>
-      </View>
+      
 
-      {/* Thống kê thời gian làm việc */}
+      {/* 5. TIME TRACKING */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Time Tracking</Text>
         <View style={styles.timeStats}>
@@ -253,30 +286,42 @@ const Analytics = () => {
             color={colors.success.main}
           />
         </View>
-        {/* Biểu đồ phân phối thời gian trong tuần */}
-        <ChartPlaceholder 
-          title="Weekly Time Distribution" 
-          data={timeTracking.weeklyData} 
-          type="line"
+
+        {/* 📈 Biểu đồ Line: Weekly Hours */}
+        <LineChart 
+          data={timeLineData}
+          title="Weekly Hours Distribution"
+          height={200}
+          width={screenWidth - 32}
+        />
+
+        {/* 📊 Biểu đồ Bar nhỏ: Weekly Tasks */}
+        <BarChart 
+          data={taskCompletionBarData}
+          title="Weekly Task Completion"
+          height={150}
+          width={screenWidth - 32}
         />
       </View>
 
-      {/* Biểu đồ hiệu suất */}
+      {/* 6. PERFORMANCE CHARTS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Performance Trends</Text>
-        <ChartPlaceholder 
-          title="Task Completion Trend" 
-          data={[]} 
-          type="line"
+        <LineChart 
+          data={timeLineData}
+          title="Task Completion Trend"
+          height={200}
+          width={screenWidth - 32}
         />
-        <ChartPlaceholder 
-          title="Goal Achievement Rate" 
-          data={[]} 
-          type="bar"
+        <BarChart 
+          data={taskBarData}
+          title="Goal Achievement Rate"
+          height={200}
+          width={screenWidth - 32}
         />
       </View>
 
-      {/* Các insight về năng suất */}
+      {/* 7. INSIGHTS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Productivity Insights</Text>
         {productivityInsights.map((insight, index) => (
